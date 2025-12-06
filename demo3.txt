@@ -1,0 +1,9 @@
+
+
+cadena nombre
+
+inicio 
+  salida("Cual es tu nombre?")
+  entrada(nombre)
+  salida("hola " + nombre)
+final

@@ -1,0 +1,18 @@
+
+entero a
+entero f
+entero b
+
+def funcion
+   a=(10+5) + (f*3)
+   b++
+findef
+
+inicio
+   salida(a+10, "hola")
+
+final
+
+
+
+
