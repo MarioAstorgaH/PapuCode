@@ -86,55 +86,61 @@ int Lexico::generaLexico(vector<char> tiraCars, string &errToken, bool conComent
     string strToken = "";
     int typToken = LIN_SIN_TIPO;
     int iToken = 0;
-    noLineas = 0;
+    noLineas = 1; // Inicia en línea 1
+
     char car;
     int linea;
-
     int columna;
-
     tToken tokenData;
-    
-    while (iToken < size(tiraCars))
+
+    lstTokens.clear();
+
+    while (iToken < tiraCars.size())
     {
         car = tiraCars[iToken];
 
+        // 1. Ignorar Retorno de Carro (\r) de Windows
+        if (car == 13) { iToken++; continue; }
+
         columna = tipoCaracter(car);
 
+        // 2. Definir tipo inicial si es un nuevo token
         if (typToken == LIN_SIN_TIPO)
         {
             typToken = tipoToken(columna);
             linea = typToken;
         }
 
-        if (matrizLexico[linea][columna] == -1000)
-        {
-            tipoError = ERR_CADENA;
-            break;
+        // 3. Protección de índices de matriz
+        if (linea < 0 || linea >= 34 || columna < 0 || columna >= 17) {
+            errToken = "Error interno: Indice fuera de rango";
+            return ERR_CAR_INVALIDO;
         }
-        else if (matrizLexico[linea][columna] == -1001)
-        {
-            tipoError = ERR_NUMERO;
-            break;
-        }
-        else if (matrizLexico[linea][columna] == -1002)
-        {
-            tipoError = ERR_COMENTANTARIO;
-            break;
-        }
-        else if (matrizLexico[linea][columna] == -1003)
-        {
+
+        int transicion = matrizLexico[linea][columna];
+
+        // 4. Chequeo de Errores definidos en matriz
+        if (transicion == -1000) { tipoError = ERR_CADENA; break; }
+        else if (transicion == -1001) { tipoError = ERR_NUMERO; break; }
+        else if (transicion == -1002) { tipoError = ERR_COMENTANTARIO; break; }
+        else if (transicion == -1003) {
             strToken = car;
             tipoError = ERR_CAR_INVALIDO;
             break;
         }
-        else if (matrizLexico[linea][columna] > 0)
+
+        // 5. Acumular caracter (Transición positiva)
+        else if (transicion > 0)
         {
-            strToken = strToken + car;
-            linea = matrizLexico[linea][columna];
-            iToken = iToken + 1;
+            strToken += car;
+            linea = transicion;
+            iToken++;
         }
-        else if (matrizLexico[linea][columna] == -1)
+
+        // 6. Fin de Token (Estado de Aceptación o Ruptura)
+        else if (transicion == -1 || transicion == 0)
         {
+            // A) IDENTIFICADORES Y PALABRAS RESERVADAS
             if (typToken == LIN_IDENTIFICADOR)
             {
                 int bR = tipoIdentificador(toLower(strToken));
@@ -142,53 +148,92 @@ int Lexico::generaLexico(vector<char> tiraCars, string &errToken, bool conComent
                 tokenData.token = toLower(strToken);
                 lstTokens.push_back(tokenData);
             }
-            else if (typToken == LIN_NUMERO || typToken == LIN_MAS ||
-                typToken == LIN_MENOS || typToken == LIN_IGUAL || typToken == LIN_MAYOR || typToken == LIN_MENOR)
+            // B) NUMEROS Y OPERADORES COMPUESTOS
+            else if (typToken == LIN_NUMERO || typToken == LIN_MAS || typToken == LIN_MENOS ||
+                     typToken == LIN_IGUAL || typToken == LIN_MAYOR || typToken == LIN_MENOR)
             {
                 tokenData.tipoToken = typToken;
                 tokenData.token = strToken;
                 lstTokens.push_back(tokenData);
             }
-            else if (typToken == LIN_ESPACIO)
-                iToken = iToken + 1;
+            // C) CADENAS (Incluir comilla de cierre)
+            else if (typToken == LIN_CADENA)
+            {
+                strToken += car;
+                tokenData.tipoToken = typToken;
+                tokenData.token = strToken;
+                lstTokens.push_back(tokenData);
+                iToken++; // Avanzar para consumir la comilla
+            }
+            // D) SIMBOLOS UNITARIOS ( ) [ ] , ;
+            else if (typToken == LIN_SIMBOLO)
+            {
+                tokenData.tipoToken = typToken;
+                tokenData.token = string(1, car);
+                lstTokens.push_back(tokenData);
+                iToken++; // Avanzar
+            }
+            // E) COMENTARIOS
+            else if (typToken == LIN_COMENTARIO || typToken == LIN_HASH)
+            {
+                strToken += car;
+                if (conComentarios) {
+                    tokenData.tipoToken = typToken;
+                    tokenData.token = strToken;
+                    lstTokens.push_back(tokenData);
+                }
+                iToken++;
+            }
+            // F) SALTOS DE LINEA
             else if (typToken == LIN_EOLN)
             {
                 tokenData.tipoToken = typToken;
                 tokenData.token = "[EOLN]";
-                lstTokens.push_back(tokenData);
-                
-                noLineas = noLineas + 1; 
-                iToken = iToken + 1;
+                lstTokens.push_back(tokenData); // Guardar para sintaxis
+                noLineas++;
+                iToken++;
             }
-            else if (typToken == LIN_COMENTARIO || typToken == LIN_HASH)
+            // G) ESPACIOS
+            else if (typToken == LIN_ESPACIO)
             {
-                strToken = strToken + car;
-                iToken = iToken + 1;
-
-                if (conComentarios)
-                {
-                    tokenData.tipoToken = typToken;
-                    tokenData.token = strToken;
-                    lstTokens.push_back(tokenData);                    
-                }
-            }    
+                iToken++;
+            }
+            // H) OTROS RESIDUALES
             else
             {
-                strToken = strToken + car;
-                iToken = iToken + 1;
-                tokenData.tipoToken = typToken;
-                tokenData.token = strToken;
-                lstTokens.push_back(tokenData);
+                if (strToken == "") strToken += car;
+                if (typToken != LIN_SIN_TIPO) {
+                    tokenData.tipoToken = typToken;
+                    tokenData.token = strToken;
+                    lstTokens.push_back(tokenData);
+                }
+                if (transicion == 0) iToken++;
             }
+
+            // Limpieza para siguiente token
             strToken = "";
             typToken = LIN_SIN_TIPO;
-        }    
+        }
+    }
+
+    // 7. Procesar último token si el archivo no terminó en delimitador
+    if (strToken != "" && tipoError == ERR_NOERROR && typToken != LIN_ESPACIO && typToken != LIN_EOLN)
+    {
+        if (typToken == LIN_IDENTIFICADOR) {
+             int bR = tipoIdentificador(toLower(strToken));
+             tokenData.tipoToken = bR;
+             tokenData.token = toLower(strToken);
+             lstTokens.push_back(tokenData);
+        } else {
+             tokenData.tipoToken = typToken;
+             tokenData.token = strToken;
+             lstTokens.push_back(tokenData);
+        }
     }
 
     errToken = strToken;
     return tipoError;
 }
-
 void Lexico::imprimir()
 {
     cout << "\n   LISTA DE TOKENS\n";

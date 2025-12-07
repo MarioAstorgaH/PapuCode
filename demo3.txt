@@ -1,5 +1,3 @@
-
-
 cadena nombre
 
 inicio 

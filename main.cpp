@@ -17,7 +17,7 @@ NOTA: para compilar (en Windows) debe estar instalado:
 using namespace std;
  
 
-int main(int argc, char* argv[]) 
+int main(int argc, char* argv[])
 {
     vector<char>tCars;
     vector<tToken> lst;
@@ -70,8 +70,8 @@ int main(int argc, char* argv[])
             //----------------------- leer todos los caracteres del archivo. Meterlos a una lista
     char c; 
     while (archivo.get(c)) 
-        tCars.push_back(c);  
-
+        tCars.push_back(c);
+    tCars.push_back('\n');
     archivo.close();
     //-----------------------
 
@@ -89,7 +89,6 @@ int main(int argc, char* argv[])
                 lex.imprimir();
             else 
                 cout << "ERROR: " << error << " :: " << errToken << "\n";
-
             cout << "Total de lineas procesadas: " << lex.getLineas() << "\n";
             break;
         
