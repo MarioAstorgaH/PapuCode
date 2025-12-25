@@ -1,8 +1,7 @@
 /*
-
 NOTA: para compilar (en Windows) debe estar instalado:
-    - MSYS2 MINGW64 
-    - CMAKE   
+    - MSYS2 MINGW64
+    - CMAKE
 
    > mingw32-make
 */
@@ -15,12 +14,12 @@ NOTA: para compilar (en Windows) debe estar instalado:
 
 
 using namespace std;
- 
+
 
 int main(int argc, char* argv[])
 {
     vector<char>tCars;
-    vector<tToken> lst;
+    // vector<tToken> lst; // No se usa en el main directamente, se puede quitar si quieres
     int error;
     string errToken;
 
@@ -29,12 +28,12 @@ int main(int argc, char* argv[])
     char modoEjecucion = 'L';  // L : lexico; S : sintaxis;  M : semantica;  B : byte-code;   R : run-time
 
 
-    if (argc < 2) 
+    if (argc < 2)
     {
         cout << "Uso: " << argv[0] << " <archivo.txt> <parametro>\n";
         cout << "   <parametro>:\n";
         cout << "      -L : (Lexico) para mostrar la lista de tokens\n";
-        cout << "      -S : (Sintaxis) para hacer la revision sintactica\n";
+        cout << "      -S : (Sintaxis) para hacer la revision sintactica y mostrar errores\n";
         cout << "      -M : (seMantica) muestra la lista de identificadores declarados\n";
         cout << "      -B : (Byte-code) mostrar el byte-code generado\n";
         cout << "      -R : (Run-time) Ejecuta el codigo compilado\n";
@@ -42,7 +41,7 @@ int main(int argc, char* argv[])
     }
 
     ifstream archivo(argv[1], ios::in);
-    if (!archivo) 
+    if (!archivo)
     {
         cerr << "No se pudo abrir el archivo: " << argv[1] << "\n";
         return 1;
@@ -66,19 +65,15 @@ int main(int argc, char* argv[])
             modoEjecucion = 'S';
     }
 
- 
-            //----------------------- leer todos los caracteres del archivo. Meterlos a una lista
-    char c; 
-    while (archivo.get(c)) 
+
+    //----------------------- leer todos los caracteres del archivo. Meterlos a una lista
+    char c;
+    while (archivo.get(c))
         tCars.push_back(c);
     tCars.push_back('\n');
     archivo.close();
     //-----------------------
 
-    //-------------------- control. Imprimir el contenido de la lista para ver si entraron todos los caracteres
-    //for (auto c = begin(tCars); c != end(tCars); c++)
-    //    cout << *c;
-    //--------------------
 
     switch (modoEjecucion)
     {
@@ -87,29 +82,36 @@ int main(int argc, char* argv[])
 
             if (error == ERR_NOERROR)
                 lex.imprimir();
-            else 
-                cout << "ERROR: " << error << " :: " << errToken << "\n";
+            else
+                cout << "ERROR LEXICO: " << error << " :: " << errToken << "\n";
             cout << "Total de lineas procesadas: " << lex.getLineas() << "\n";
             break;
-        
+
         case 'S' :
+            // 1. Primero generamos el léxico (sin imprimir tokens)
             error = lex.generaLexico(tCars, errToken, false);
 
             if (error == ERR_NOERROR)
             {
-                //lex.imprimir();
-                Sintaxis sintax(lex);  
-                error = sintax.generaSintaxis();
-                string msgErrorSintax = sintax.mensajeError(error);
-                cout << "ERROR DE SINTAXIS: " << error << " :: " << msgErrorSintax << "\n";
+                // 2. Si el léxico está bien, pasamos al sintáctico
+                Sintaxis sintax(lex);
+
+                // Ejecutamos el análisis (ahora guarda los errores internamente)
+                sintax.generaSintaxis();
+
+                // 3. Imprimimos el reporte de errores (o éxito) usando el nuevo método
+                sintax.imprimirErrores();
             }
-            else 
-                cout << "ERROR: " << error << " :: " << errToken << "\n";
+            else
+            {
+                // Si falla el léxico, ni siquiera intentamos el sintáctico
+                cout << "ERROR LEXICO FATAL: " << error << " :: " << errToken << "\n";
+            }
 
             cout << "Total de lineas procesadas: " << lex.getLineas() << "\n";
             break;
 
-        case 'M' : 
+        case 'M' :
             break;
 
         case 'B' :

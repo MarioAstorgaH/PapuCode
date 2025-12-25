@@ -71,9 +71,9 @@ vector<pair<string, int>> lstReservadas = {
 
 Lexico::Lexico()
 {
-    //    
+    //
 }
- 
+
 Lexico::~Lexico()
 {
     //
@@ -238,7 +238,7 @@ void Lexico::imprimir()
 {
     cout << "\n   LISTA DE TOKENS\n";
     cout << "---------------------------\n";
-    for (int i = 0; i < lstTokens.size(); i++)    
+    for (int i = 0; i < lstTokens.size(); i++)
         cout << lstTokens[i].token << "\t\t\t\t :: " << lstTokens[i].tipoToken << "-" << getTipoTokenStr(lstTokens[i].tipoToken, lstTokens[i].token) << "\n";
 }
 
@@ -247,21 +247,21 @@ int Lexico::tipoCaracter(char c)
     int car = 0;
 
     if (c == ' ')
-        car = COL_ESPACIO; 
+        car = COL_ESPACIO;
     else if ((c == '_') or (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c == '_'))
         car = COL_LETRAS;
-    else if (c >= '0' and c <= '9') 
-        car = COL_NUMEROS; 
-    else if (c == '.') 
+    else if (c >= '0' and c <= '9')
+        car = COL_NUMEROS;
+    else if (c == '.')
         car = COL_PUNTO;
-    else if (string("()[]*/,").find(c) != string::npos)    
-        car = COL_UNITARIOS; 
+    else if (string("()[]*/,").find(c) != string::npos)
+        car = COL_UNITARIOS;
     else if (c == '=')
-        car = COL_IGUAL; 
+        car = COL_IGUAL;
     else if (c == '>')
         car = COL_MAYOR;
     else if (c == '<')
-        car = COL_MENOR; 
+        car = COL_MENOR;
     else if (c == '+')
         car = COL_MAS;
     else if (c == '-')
@@ -270,7 +270,7 @@ int Lexico::tipoCaracter(char c)
         car = COL_COMILLAS;
     else if (c == '\n')
         car = COL_EOLN;
-    else if (c == '#') 
+    else if (c == '#')
         car = COL_HASH;
     else if (c == '{')
         car = COL_LLAVE_ABRIR;
@@ -278,7 +278,7 @@ int Lexico::tipoCaracter(char c)
         car = COL_LLAVE_CERRAR;
     else if (c == '\0')
         car = COL_EOF;
-    else 
+    else
         car = COL_OTROS;
 
     return car;
@@ -307,7 +307,7 @@ int Lexico::tipoToken(int c)
     else if (c == COL_MAS)
         tipoTok = LIN_MAS;
     else if (c == COL_HASH)
-        tipoTok = LIN_HASH; 
+        tipoTok = LIN_HASH;
     else if (c == COL_MENOS)
         tipoTok = LIN_MENOS;
     else if (c == COL_LLAVE_ABRIR)
@@ -320,7 +320,7 @@ int Lexico::tipoToken(int c)
         tipoTok = LIN_MAYOR;
     else if (c == COL_MENOR)
         tipoTok = LIN_MENOR;
-    else 
+    else
         tipoTok = LIN_SIN_TIPO;
 
     return tipoTok;
@@ -329,10 +329,10 @@ int Lexico::tipoToken(int c)
 string Lexico::getTipoTokenStr(int t, string tt)
 {
     string sT = "No definido";
-    
+
     if (t == LIN_ESPACIO)
         sT = "ESPACIO";
-    else if (t == LIN_IDENTIFICADOR)   
+    else if (t == LIN_IDENTIFICADOR)
         sT = "IDENTIFICADOR [" + toUpper(tt) + "]";    // Identificador ó palabra reservada ??
     else if (t == LIN_CADENA)
         sT = "CADENA";
@@ -359,11 +359,11 @@ string Lexico::getTipoTokenStr(int t, string tt)
     else if (t == LIN_IGUAL)
         sT = "OPERADOR IGUAL";   //  =   ==
     else if (t == LIN_MAYOR)
-        sT = "OPERADOR MAYOR";  //  >   >=  
+        sT = "OPERADOR MAYOR";  //  >   >=
     else if (t == LIN_MENOR)
         sT = "OPERADOR MENOR";  //  <   <=   <>
     else if (t >= RES_SI && t <= RES_FINAL)
-        sT = "PALABRA RESERVADA [" + tt + "]";    
+        sT = "PALABRA RESERVADA [" + tt + "]";
     else if (t >= RES_ENTERO && t <= RES_CADENA)
         sT = "TIPO DE DATO [" + tt + "]";
 
@@ -398,15 +398,15 @@ int Lexico::getLineas()
 //--------------------------------- funciones que NO existen en Python
 string toLower(string s)
 {
-    for (char& c : s)    
+    for (char& c : s)
         c = tolower(static_cast<unsigned char>(c));
     return s;
 }
 
 string toUpper(string s)
 {
-    for (char& c : s)    
+    for (char& c : s)
         c = toupper(static_cast<unsigned char>(c));
     return s;
 }
-    
+

@@ -1,7 +1,8 @@
 cadena nombre
 
-inicio 
-  salida("Cual es tu nombre?")
-  entrada(nombre)
-  salida("hola " + nombre)
+inicio
+    saida("Error de dedo")
+    salida("Falta parentesis"
+    entrada(nombre)
+    salida(variableNoDeclarada)
 final

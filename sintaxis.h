@@ -6,7 +6,8 @@
 #include <iostream>
 #include <vector>
 #include "lexico.h"
-
+#include <queue>
+struct InfoError;
 using namespace std;
 
 
@@ -37,6 +38,9 @@ using namespace std;
 class Sintaxis 
 {
 private :
+    std::queue<InfoError> colaErrores;
+    void registrarError(int codigoError);
+    void sincronizar();
     Lexico lexico;
     vector<tToken> lstTokens;
     int iToken;
@@ -45,7 +49,7 @@ private :
 public:
     Sintaxis(Lexico lex);
     ~Sintaxis();
-
+    void imprimirErrores();
     int generaSintaxis();
     void sigToken();
 
@@ -67,6 +71,9 @@ public:
     int getTipoIdentificador(string iden);
     string getStrTipoIdentificador(int tipo);
 };
-
+struct InfoError {
+    int codigo;
+    string mensaje;
+};
 
 #endif
