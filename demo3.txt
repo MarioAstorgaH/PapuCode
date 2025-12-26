@@ -1,8 +1,20 @@
+entero edad
+flotante altura
 cadena nombre
+entero edad
 
 inicio
-    saida("Error de dedo")
-    salida("Falta parentesis"
-    entrada(nombre)
-    salida(variableNoDeclarada)
+    edad = 25
+    altura = 1.75
+    nombre = "Papu"
+
+    peso = 80
+
+    edad = "Veinte"
+
+    altura = 10 + 5.5
+
+    nombre = 100
+
+    edad = edad + 1
 final

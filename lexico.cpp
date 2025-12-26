@@ -1,412 +1,239 @@
-#include <iostream>
-#include <list>
-#include <string>
-#include <cctype>
 #include "lexico.h"
-
+#include <cctype>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <algorithm>
 
 using namespace std;
 
+// =========================================================================
+// FUNCIONES AUXILIARES
+// =========================================================================
 
-int matrizLexico[34][17] = {
-    {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {-1, 2, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0},
-    {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, -1, 4, -1000, -1000, 4, 4, 4},
-    {0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {-1, -1, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1001, -1001, 8, -1001, -1001, -1001, -1001, -1001, -1001, -1001, -1001, -1001, -1001, -1001, -1001, -1001, -1001},
-    {-1, -1, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0},
-    {-1, -1, -1, -1, -1, -1, -1, -1, 12, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0},
-    {14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, -1, -1, 14, 14, 14},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 17, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0},
-    {19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, -1002, 19, 19, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1003, 0, 0, 0, 0, 0},
-    {0, 0, 0, -1003, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {-1, -1, -1, -1, -1, 27, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {-1, -1, -1, -1, -1, 30, -1, 30, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, 32, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, 33, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
-};
-
-
-
-vector<pair<string, int>> lstReservadas = {
-    {"si", RES_SI},
-    {"finsi", RES_FINSI},
-    {"sino", RES_SINO},
-    {"ciclo", RES_CICLO},
-    {"finci", RES_FINCI},
-    {"mientras", RES_MIENTRAS},
-    {"finmi", RES_FINMI},
-    {"def", RES_DEF},
-    {"findef", RES_FINDEF},
-    {"entero", RES_ENTERO},
-    {"flotante", RES_FLOTANTE},
-    {"cadena", RES_CADENA},
-    {"salida", RES_SALIDA},
-    {"entrada", RES_ENTRADA},
-    {"inicio", RES_INICIO},
-    {"final", RES_FINAL}
-};
-
-
-
-
-Lexico::Lexico()
-{
-    //
+// Elimina caracteres no imprimibles (como \r) de un string
+string cleanString(string s) {
+    string cleaned = "";
+    for (char c : s) {
+        if (c >= 32 && c <= 126) { // Solo caracteres ASCII imprimibles
+            cleaned += c;
+        }
+    }
+    return cleaned;
 }
 
-Lexico::~Lexico()
-{
-    //
+string toLower(string s) {
+    string res = s;
+    transform(res.begin(), res.end(), res.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+    return res;
 }
 
+string toUpper(string s) {
+    string res = s;
+    transform(res.begin(), res.end(), res.begin(),
+                   [](unsigned char c){ return std::toupper(c); });
+    return res;
+}
 
-int Lexico::generaLexico(vector<char> tiraCars, string &errToken, bool conComentarios)
+// =========================================================================
+// IMPLEMENTACIÓN DE LA CLASE LEXICO
+// =========================================================================
+
+Lexico::Lexico() {
+    noLineas = 0;
+}
+
+Lexico::~Lexico() {
+}
+
+vector<tToken> Lexico::get() {
+    return lstTokens;
+}
+
+int Lexico::getLineas() {
+    return noLineas;
+}
+
+int Lexico::generaLexico(vector<char> entrada, string &errorToken, bool imprimir)
 {
-    int tipoError = ERR_NOERROR;
-    string strToken = "";
+    int estado = 0;
+    int columna = 0;
     int typToken = LIN_SIN_TIPO;
-    int iToken = 0;
-    noLineas = 1; // Inicia en línea 1
-
+    string strToken = "";
     char car;
-    int linea;
-    int columna;
-    tToken tokenData;
+    int tipoError = ERR_NOERROR;
 
+    noLineas = 1;
     lstTokens.clear();
 
-    while (iToken < tiraCars.size())
+    // Matriz de Transicion
+    static int matran[15][17] = {
+      // L   N   .   U   =   >   <   +   -   "  EOL  #   {   }  EOF OTRO ESP
+        { 1,  2, 11, 10,  6,  8,  9, 11, 11,  3, -1, 13, 11, 11, 14, 12, 0}, // 0
+        { 1,  1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1
+        { -1, 2,  4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 2
+        { 3,  3,  3,  3,  3,  3,  3,  3,  3,  5, -1000, 3, 3, 3, -1000, 3, 3}, // 3
+        { -1, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 4
+        { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 5
+        { -1, -1, -1, -1,  7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 6
+        { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 7
+        { -1, -1, -1, -1,  7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 8
+        { -1, -1, -1, -1,  7,  7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 9
+        { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 10
+        { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 11
+        { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 12
+        { 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,  0, 13, 13, 13, -1, 13, 13}, // 13
+        { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}  // 14
+    };
+
+    for (int i = 0; i < entrada.size(); )
     {
-        car = tiraCars[iToken];
-
-        // 1. Ignorar Retorno de Carro (\r) de Windows
-        if (car == 13) { iToken++; continue; }
-
+        car = entrada[i];
         columna = tipoCaracter(car);
+        int transicion = matran[estado][columna];
 
-        // 2. Definir tipo inicial si es un nuevo token
-        if (typToken == LIN_SIN_TIPO)
+        if (transicion != -1)
         {
-            typToken = tipoToken(columna);
-            linea = typToken;
+            if (transicion == -1000) { tipoError = ERR_CADENA; break; }
+            else if (transicion == -1001) { tipoError = ERR_NUMERO; break; }
+
+            estado = transicion;
+            if (estado != 0 && estado != 13) strToken += car;
+
+            i++;
         }
-
-        // 3. Protección de índices de matriz
-        if (linea < 0 || linea >= 34 || columna < 0 || columna >= 17) {
-            errToken = "Error interno: Indice fuera de rango";
-            return ERR_CAR_INVALIDO;
-        }
-
-        int transicion = matrizLexico[linea][columna];
-
-        // 4. Chequeo de Errores definidos en matriz
-        if (transicion == -1000) { tipoError = ERR_CADENA; break; }
-        else if (transicion == -1001) { tipoError = ERR_NUMERO; break; }
-        else if (transicion == -1002) { tipoError = ERR_COMENTANTARIO; break; }
-        else if (transicion == -1003) {
-            strToken = car;
-            tipoError = ERR_CAR_INVALIDO;
-            break;
-        }
-
-        // 5. Acumular caracter (Transición positiva)
-        else if (transicion > 0)
+        else
         {
-            strToken += car;
-            linea = transicion;
-            iToken++;
-        }
+            // EL AUTOMATA SE DETUVO
+            if (estado != 0)
+            {
+                if (estado == 1) typToken = LIN_IDENTIFICADOR;
+                else if (estado == 2) typToken = LIN_NUM_ENTERO;
+                else if (estado == 4) typToken = LIN_NUM_FLOTANTE;
+                else if (estado == 5) typToken = LIN_CADENA;
+                else if (estado == 6) typToken = LIN_IGUAL;
+                else if (estado == 7 || estado == 10 || estado == 11) typToken = LIN_SIMBOLO;
+                else if (estado == 8) typToken = LIN_MAYOR;
+                else if (estado == 9) typToken = LIN_MENOR;
+                else if (estado == 12) { tipoError = ERR_CAR_INVALIDO; break; }
+                else if (estado == 14) typToken = LIN_EOF;
 
-        // 6. Fin de Token (Estado de Aceptación o Ruptura)
-        else if (transicion == -1 || transicion == 0)
-        {
-            // A) IDENTIFICADORES Y PALABRAS RESERVADAS
-            if (typToken == LIN_IDENTIFICADOR)
-            {
-                int bR = tipoIdentificador(toLower(strToken));
-                tokenData.tipoToken = bR;
-                tokenData.token = toLower(strToken);
-                lstTokens.push_back(tokenData);
-            }
-            // B) NUMEROS Y OPERADORES COMPUESTOS
-            else if (typToken == LIN_NUMERO || typToken == LIN_MAS || typToken == LIN_MENOS ||
-                     typToken == LIN_IGUAL || typToken == LIN_MAYOR || typToken == LIN_MENOR)
-            {
-                tokenData.tipoToken = typToken;
-                tokenData.token = strToken;
-                lstTokens.push_back(tokenData);
-            }
-            // C) CADENAS (Incluir comilla de cierre)
-            else if (typToken == LIN_CADENA)
-            {
-                strToken += car;
-                tokenData.tipoToken = typToken;
-                tokenData.token = strToken;
-                lstTokens.push_back(tokenData);
-                iToken++; // Avanzar para consumir la comilla
-            }
-            // D) SIMBOLOS UNITARIOS ( ) [ ] , ;
-            else if (typToken == LIN_SIMBOLO)
-            {
-                tokenData.tipoToken = typToken;
-                tokenData.token = string(1, car);
-                lstTokens.push_back(tokenData);
-                iToken++; // Avanzar
-            }
-            // E) COMENTARIOS
-            else if (typToken == LIN_COMENTARIO || typToken == LIN_HASH)
-            {
-                strToken += car;
-                if (conComentarios) {
-                    tokenData.tipoToken = typToken;
-                    tokenData.token = strToken;
-                    lstTokens.push_back(tokenData);
+                if (typToken == LIN_IDENTIFICADOR) {
+                    // LIMPIEZA PROFUNDA ANTES DE COMPARAR
+                    string idLimpio = cleanString(strToken);
+                    int bR = tipoIdentificador(toLower(idLimpio));
+                    if (bR != -1) typToken = bR;
                 }
-                iToken++;
+                else if (typToken == LIN_SIMBOLO) {
+                    string sLimpio = cleanString(strToken);
+                    if (sLimpio == "+") typToken = LIN_MAS;
+                    else if (sLimpio == "-") typToken = LIN_MENOS;
+                }
+
+                if (strToken != "" && tipoError == ERR_NOERROR) {
+                    tToken t;
+                    t.token = cleanString(strToken); // Guardamos el token limpio
+                    t.tipoToken = typToken;
+                    t.linea = noLineas;
+                    lstTokens.push_back(t);
+                }
             }
-            // F) SALTOS DE LINEA
-            else if (typToken == LIN_EOLN)
-            {
-                tokenData.tipoToken = typToken;
-                tokenData.token = "[EOLN]";
-                lstTokens.push_back(tokenData); // Guardar para sintaxis
+
+            if (columna == COL_EOLN) {
+                tToken t; t.token = "EOLN"; t.tipoToken = LIN_EOLN; t.linea = noLineas;
+                lstTokens.push_back(t);
                 noLineas++;
-                iToken++;
-            }
-            // G) ESPACIOS
-            else if (typToken == LIN_ESPACIO)
-            {
-                iToken++;
-            }
-            // H) OTROS RESIDUALES
-            else
-            {
-                if (strToken == "") strToken += car;
-                if (typToken != LIN_SIN_TIPO) {
-                    tokenData.tipoToken = typToken;
-                    tokenData.token = strToken;
-                    lstTokens.push_back(tokenData);
-                }
-                if (transicion == 0) iToken++;
+                i++;
             }
 
-            // Limpieza para siguiente token
+            estado = 0;
             strToken = "";
-            typToken = LIN_SIN_TIPO;
         }
     }
 
-    // 7. Procesar último token si el archivo no terminó en delimitador
-    if (strToken != "" && tipoError == ERR_NOERROR && typToken != LIN_ESPACIO && typToken != LIN_EOLN)
-    {
-        if (typToken == LIN_IDENTIFICADOR) {
-             int bR = tipoIdentificador(toLower(strToken));
-             tokenData.tipoToken = bR;
-             tokenData.token = toLower(strToken);
-             lstTokens.push_back(tokenData);
-        } else {
-             tokenData.tipoToken = typToken;
-             tokenData.token = strToken;
-             lstTokens.push_back(tokenData);
-        }
+    if (tipoError != ERR_NOERROR) {
+        errorToken = strToken;
+        return tipoError;
     }
-
-    errToken = strToken;
-    return tipoError;
-}
-void Lexico::imprimir()
-{
-    cout << "\n   LISTA DE TOKENS\n";
-    cout << "---------------------------\n";
-    for (int i = 0; i < lstTokens.size(); i++)
-        cout << lstTokens[i].token << "\t\t\t\t :: " << lstTokens[i].tipoToken << "-" << getTipoTokenStr(lstTokens[i].tipoToken, lstTokens[i].token) << "\n";
+    return ERR_NOERROR;
 }
 
 int Lexico::tipoCaracter(char c)
 {
-    int car = 0;
+    // IMPORTANTE: Tratar \r como espacio para ignorarlo
+    if (c == 13) return COL_ESPACIO;
 
-    if (c == ' ')
-        car = COL_ESPACIO;
-    else if ((c == '_') or (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c == '_'))
-        car = COL_LETRAS;
-    else if (c >= '0' and c <= '9')
-        car = COL_NUMEROS;
-    else if (c == '.')
-        car = COL_PUNTO;
-    else if (string("()[]*/,").find(c) != string::npos)
-        car = COL_UNITARIOS;
-    else if (c == '=')
-        car = COL_IGUAL;
-    else if (c == '>')
-        car = COL_MAYOR;
-    else if (c == '<')
-        car = COL_MENOR;
-    else if (c == '+')
-        car = COL_MAS;
-    else if (c == '-')
-        car = COL_MENOS;
-    else if (c == '"')
-        car = COL_COMILLAS;
-    else if (c == '\n')
-        car = COL_EOLN;
-    else if (c == '#')
-        car = COL_HASH;
-    else if (c == '{')
-        car = COL_LLAVE_ABRIR;
-    else if (c == '}')
-        car = COL_LLAVE_CERRAR;
-    else if (c == '\0')
-        car = COL_EOF;
-    else
-        car = COL_OTROS;
-
-    return car;
-
+    if (isalpha(c)) return COL_LETRAS;
+    if (isdigit(c)) return COL_NUMEROS;
+    if (c == '.') return COL_PUNTO;
+    if (c == '(' || c == ')' || c == ',' || c == '*' || c == '/') return COL_UNITARIOS;
+    if (c == '=') return COL_IGUAL;
+    if (c == '>') return COL_MAYOR;
+    if (c == '<') return COL_MENOR;
+    if (c == '+') return COL_MAS;
+    if (c == '-') return COL_MENOS;
+    if (c == '"') return COL_COMILLAS;
+    if (c == '\n') return COL_EOLN;
+    if (c == '#') return COL_HASH;
+    if (c == '{') return COL_LLAVE_ABRIR;
+    if (c == '}') return COL_LLAVE_CERRAR;
+    if (c == 0 || c == EOF) return COL_EOF;
+    if (isspace(c)) return COL_ESPACIO;
+    return COL_OTROS;
 }
-
 
 int Lexico::tipoToken(int c)
 {
-    int tipoTok = -1;
-
-    if (c == COL_ESPACIO)
-        tipoTok = LIN_ESPACIO;
-    else if (c == COL_EOLN)
-        tipoTok = LIN_EOLN;
-    else if (c == COL_EOF)
-        tipoTok = LIN_EOF;
-    else if (c == COL_LETRAS)
-        tipoTok = LIN_IDENTIFICADOR;
-    else if (c == COL_COMILLAS)
-        tipoTok = LIN_CADENA;
-    else if (c == COL_NUMEROS)
-        tipoTok = LIN_NUMERO;
-    else if (c == COL_UNITARIOS)
-        tipoTok = LIN_SIMBOLO;
-    else if (c == COL_MAS)
-        tipoTok = LIN_MAS;
-    else if (c == COL_HASH)
-        tipoTok = LIN_HASH;
-    else if (c == COL_MENOS)
-        tipoTok = LIN_MENOS;
-    else if (c == COL_LLAVE_ABRIR)
-        tipoTok = LIN_COMENTARIO;
-    else if (c == COL_PUNTO)
-        tipoTok = LIN_PUNTO;
-    else if (c == COL_IGUAL)
-        tipoTok = LIN_IGUAL;
-    else if (c == COL_MAYOR)
-        tipoTok = LIN_MAYOR;
-    else if (c == COL_MENOR)
-        tipoTok = LIN_MENOR;
-    else
-        tipoTok = LIN_SIN_TIPO;
-
-    return tipoTok;
-}
-
-string Lexico::getTipoTokenStr(int t, string tt)
-{
-    string sT = "No definido";
-
-    if (t == LIN_ESPACIO)
-        sT = "ESPACIO";
-    else if (t == LIN_IDENTIFICADOR)
-        sT = "IDENTIFICADOR [" + toUpper(tt) + "]";    // Identificador ó palabra reservada ??
-    else if (t == LIN_CADENA)
-        sT = "CADENA";
-    else if (t == LIN_NUMERO)
-        sT = "NUMERO";   //  Número Entero ó Flotante ??
-    else if (t == LIN_SIMBOLO)
-        sT = "SIMBOLO";   // (  )  [  ]  *  /    ,
-    else if (t == LIN_MAS)
-        sT = "OPERADOR SUMA";   // +   ++
-    else if (t == LIN_HASH)
-        sT = "COMENTARIO CORTO";
-    else if (t == LIN_MENOS)
-        sT = "OPERADOR RESTA";
-    else if (t == LIN_COMENTARIO)
-        sT = "COMENTARIO LARGO";
-    else if (t == LIN_EOLN)
-        sT = "FIN DE LINEA";
-    else if (t == LIN_EOF)
-        sT = "FIN DE ARCHIVO";
-    else if (t == LIN_SIN_TIPO)
-        sT = "SIN TIPO DEFINIDO";
-    else if (t == LIN_PUNTO)
-        sT = "PUNTO";
-    else if (t == LIN_IGUAL)
-        sT = "OPERADOR IGUAL";   //  =   ==
-    else if (t == LIN_MAYOR)
-        sT = "OPERADOR MAYOR";  //  >   >=
-    else if (t == LIN_MENOR)
-        sT = "OPERADOR MENOR";  //  <   <=   <>
-    else if (t >= RES_SI && t <= RES_FINAL)
-        sT = "PALABRA RESERVADA [" + tt + "]";
-    else if (t >= RES_ENTERO && t <= RES_CADENA)
-        sT = "TIPO DE DATO [" + tt + "]";
-
-    return sT;
+    return LIN_SIN_TIPO;
 }
 
 int Lexico::tipoIdentificador(string id)
 {
-    int pRes = LIN_IDENTIFICADOR;
+    // Comparación directa de strings limpios
+    if (id == "inicio") return RES_INICIO;
+    if (id == "final") return RES_FINAL;
+    if (id == "entero") return RES_ENTERO;
+    if (id == "flotante") return RES_FLOTANTE;
+    if (id == "cadena") return RES_CADENA;
+    if (id == "si") return RES_SI;
+    if (id == "sino") return RES_SINO;
+    if (id == "finsi") return RES_FINSI;
+    if (id == "mientras") return RES_MIENTRAS;
+    if (id == "finmi") return RES_FINMI;
+    if (id == "ciclo") return RES_CICLO;
+    if (id == "finci") return RES_FINCI;
+    if (id == "salida") return RES_SALIDA;
+    if (id == "entrada") return RES_ENTRADA;
+    if (id == "def") return RES_DEF;
+    if (id == "findef") return RES_FINDEF;
 
-    for (const auto& p : lstReservadas)
-        if (id == p.first)
-        {
-            pRes = p.second;
-            break;
-        }
-    return pRes;
+    return -1;
 }
 
-vector<tToken> Lexico::get()
+string Lexico::getTipoTokenStr(int t, string tt)
 {
-   return lstTokens;
+    if (t == LIN_IDENTIFICADOR) return "IDENTIFICADOR [" + toUpper(tt) + "]";
+    if (t == LIN_NUM_ENTERO) return "ENTERO";
+    if (t == LIN_NUM_FLOTANTE) return "FLOTANTE";
+    if (t == LIN_CADENA) return "CADENA";
+    if (t == LIN_EOLN) return "EOLN";
+
+    if (t == RES_INICIO) return "RES_INICIO";
+    if (t == RES_FINAL) return "RES_FINAL";
+
+    return "SIMBOLO/OTRO";
 }
 
-int Lexico::getLineas()
+void Lexico::imprimir()
 {
-    return noLineas;
+    cout << "---------------------------------------" << endl;
+    cout << "LISTA DE TOKENS GENERADOS:" << endl;
+    cout << "---------------------------------------" << endl;
+    for (int i = 0; i < lstTokens.size(); i++)
+    {
+        cout << "Linea " << lstTokens[i].linea << ": \t"
+             << lstTokens[i].token << "\t\t (" << lstTokens[i].tipoToken << ")" << endl;
+    }
+    cout << "---------------------------------------" << endl;
 }
-
-
-
-//--------------------------------- funciones que NO existen en Python
-string toLower(string s)
-{
-    for (char& c : s)
-        c = tolower(static_cast<unsigned char>(c));
-    return s;
-}
-
-string toUpper(string s)
-{
-    for (char& c : s)
-        c = toupper(static_cast<unsigned char>(c));
-    return s;
-}
-

@@ -1,58 +1,36 @@
 #ifndef SINTAXIS_H
 #define SINTAXIS_H
 
-
-
 #include <iostream>
+#include <string>
 #include <vector>
-#include "lexico.h"
 #include <queue>
-struct InfoError;
+#include "lexico.h"     // <--- Aquí ya vienen todos los #define
+#include "semantica.h"
+
 using namespace std;
 
+struct InfoError {
+    int codigo;
+    string mensaje;
+    int linea;
+};
 
-
-//-----------------------------constantes de error (SINTAXIS) (SEMANTICA)
-#define ERR_NO_SINTAX_ERROR                         0
-#define ERR_IDENTIFICADOR                           1
-#define ERR_EOLN                                    2
-#define ERR_INICIO                                  3
-#define ERR_FINAL                                   4
-#define ERR_FINDEF                                  5
-#define ERR_PARENTESIS_ABRIR                        6
-#define ERR_PARENTESIS_CERRAR                       7
-#define ERR_OP_LOGICO                               8
-#define ERR_FINMI                                   9
-#define ERR_CONDICION                               10
-#define ERR_FINSI                                   11
-
-#define ERR_SEMANTICA_NO_ERROR                      0
-#define ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE       101
-#define ERR_SEMANTICA_IDENTIFICADOR_NO_DECL         102
-#define ERR_SEMANTICA_FUNCION_NO_DECL               103
-#define ERR_SEMANTICA_IDENTIFICADOR_NO_ENTERO       104
-#define ERR_SEMANTICA_IDENT_FUNCION_MAL_USO         105
-
-
-
-class Sintaxis 
-{
-private :
-    std::queue<InfoError> colaErrores;
-    void registrarError(int codigoError);
-    void sincronizar();
+class Sintaxis {
+private:
     Lexico lexico;
+    Semantica semantica;
     vector<tToken> lstTokens;
     int iToken;
     tToken tokActual;
-    vector<tToken> tablaSimbolos;
-public:
-    Sintaxis(Lexico lex);
-    ~Sintaxis();
-    void imprimirErrores();
-    int generaSintaxis();
-    void sigToken();
+    std::queue<InfoError> colaErrores;
 
+    // Métodos de utilidad interna
+    void sigToken();
+    void registrarError(int codigo);
+    void sincronizar();
+
+    // Métodos de la gramática
     int procPrincipal();
     int procInstrucciones();
     int procDefCiclo();
@@ -61,19 +39,22 @@ public:
     int procDefSalida();
     int procDefEntrada();
     int procDefCondicion();
-    int procDefExpresion();
+    int procDefExpresion(int &tipoResultado);
     int procDefIdentificador();
-    
-    string mensajeError(int err);
-    
+
+    // Métodos auxiliares
     int agregarIdentificador(string iden, int tipo, int linea);
     vector<tToken> getListaIdentificadores();
     int getTipoIdentificador(string iden);
     string getStrTipoIdentificador(int tipo);
-};
-struct InfoError {
-    int codigo;
-    string mensaje;
+
+public:
+    Sintaxis(Lexico lex);
+    ~Sintaxis();
+
+    int generaSintaxis();
+    string mensajeError(int err);
+    void imprimirErrores();
 };
 
 #endif
