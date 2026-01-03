@@ -7,12 +7,14 @@
 
 using namespace std;
 
-Sintaxis::Sintaxis(Lexico lex)
+// Constructor coincidente con el .h
+Sintaxis::Sintaxis(Lexico lex, bool activarSemantica)
 {
     lexico = lex;
     lstTokens = lex.get();
     iToken = 0;
     tokActual = {0, ""};
+    realizarAnalisisSemantico = activarSemantica;
 }
 
 Sintaxis::~Sintaxis()
@@ -22,7 +24,7 @@ Sintaxis::~Sintaxis()
 void Sintaxis::sincronizar()
 {
     if (tokActual.tipoToken == LIN_EOF) return;
-    sigToken(); // Avanzar al menos uno
+    sigToken();
     while (tokActual.tipoToken != LIN_EOLN && tokActual.tipoToken != LIN_EOF)
     {
         sigToken();
@@ -40,7 +42,7 @@ void Sintaxis::registrarError(int codigo)
     InfoError errorInfo;
     errorInfo.codigo = codigo;
     errorInfo.mensaje = mensajeError(codigo);
-    errorInfo.linea = tokActual.linea; // Capturamos la linea
+    errorInfo.linea = tokActual.linea;
     colaErrores.push(errorInfo);
 }
 
@@ -53,16 +55,12 @@ int Sintaxis::generaSintaxis()
     return ERR_NO_SINTAX_ERROR;
 }
 
-
 void Sintaxis::sigToken()
 {
-    // Protección de limites
     if (iToken >= lstTokens.size()) {
         tokActual.tipoToken = LIN_EOF;
         return;
     }
-
-    // Avanzamos al siguiente token
     tokActual = lstTokens[iToken];
     iToken++;
 }
@@ -77,7 +75,7 @@ int Sintaxis::procPrincipal()
 
     while (tokActual.tipoToken != RES_INICIO && tokActual.tipoToken != LIN_EOF)
     {
-        error = ERR_NO_SINTAX_ERROR; // Resetear siempre al inicio
+        error = ERR_NO_SINTAX_ERROR;
 
         if (tokActual.tipoToken == RES_ENTERO || tokActual.tipoToken == RES_FLOTANTE || tokActual.tipoToken == RES_CADENA)
         {
@@ -89,12 +87,15 @@ int Sintaxis::procPrincipal()
                 sigToken();
                 if (tokActual.tipoToken == LIN_EOLN)
                 {
-                    // === CORRECCIÓN AQUÍ ===
-                    int errSemantico = agregarIdentificador(ident, tipoIdent, 0);
-                    if (errSemantico != ERR_SEMANTICA_NO_ERROR) {
-                         registrarError(errSemantico);
-                         // NO asignamos 'error = errSemantico' para evitar que se dispare sincronizar()
-                         // La estructura sintáctica es correcta, solo falló la lógica.
+                    // LÓGICA DE INTERRUPTOR SEMÁNTICO
+                    if (realizarAnalisisSemantico) {
+                        int errSemantico = agregarIdentificador(ident, tipoIdent, 0);
+                        if (errSemantico != ERR_SEMANTICA_NO_ERROR) {
+                             registrarError(errSemantico);
+                        }
+                    } else {
+                        // Si es solo sintaxis, agregamos "a ciegas" para no romper el parser luego
+                        agregarIdentificador(ident, tipoIdent, 0);
                     }
                     sigToken();
                 }
@@ -114,11 +115,13 @@ int Sintaxis::procPrincipal()
                 sigToken();
                 if (tokActual.tipoToken == LIN_EOLN)
                 {
-                    int errSemantico = agregarIdentificador(ident, tipoIdent, 0);
-                    if (errSemantico == ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE) {
-                        registrarError(errSemantico);
-                        // Aquí tampoco sincronizamos, pero tal vez querramos evitar procesar el cuerpo
-                        // Por simplicidad, dejamos que siga
+                    if (realizarAnalisisSemantico) {
+                        int errSemantico = agregarIdentificador(ident, tipoIdent, 0);
+                        if (errSemantico == ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE) {
+                            registrarError(errSemantico);
+                        }
+                    } else {
+                        agregarIdentificador(ident, tipoIdent, 0);
                     }
 
                     sigToken();
@@ -150,7 +153,6 @@ int Sintaxis::procPrincipal()
             error = ERR_INICIO;
         }
 
-        // Solo sincronizamos si hubo un error SINTÁCTICO real
         if (error != ERR_NO_SINTAX_ERROR) {
             registrarError(error);
             sincronizar();
@@ -284,8 +286,6 @@ int Sintaxis::procDefSalida()
         while (true)
         {
             sigToken();
-
-            // CORRECCION: Pasar variable para el tipo
             int tipoResultado = 0;
             error = procDefExpresion(tipoResultado);
 
@@ -322,9 +322,11 @@ int Sintaxis::procDefEntrada()
         if (tokActual.tipoToken == LIN_IDENTIFICADOR)
         {
             string nombre = tokActual.token;
-            // Validar que la variable exista antes de leer en ella
-            if (!semantica.existeIdentificador(nombre)) {
-                registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+            // Validar que la variable exista (Solo si semántica está activa)
+            if (realizarAnalisisSemantico) {
+                if (!semantica.existeIdentificador(nombre)) {
+                    registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+                }
             }
 
             sigToken();
@@ -348,7 +350,6 @@ int Sintaxis::procDefCondicion()
     int tipoDer = 0;
 
     sigToken();
-    // CORRECCION: Pasar variable tipo
     error = procDefExpresion(tipoIzq);
 
     if (error == ERR_NO_SINTAX_ERROR)
@@ -357,12 +358,14 @@ int Sintaxis::procDefCondicion()
             tokActual.token == "<>" || tokActual.token == ">" || tokActual.token == "<")
         {
             sigToken();
-            // CORRECCION: Pasar variable tipo
             error = procDefExpresion(tipoDer);
 
+            // Validar tipos compatibles (Solo si semántica está activa)
             if (error == ERR_NO_SINTAX_ERROR) {
-                if(!semantica.sonTiposCompatibles(tipoIzq, tipoDer)) {
-                    registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
+                if (realizarAnalisisSemantico) {
+                    if(!semantica.sonTiposCompatibles(tipoIzq, tipoDer)) {
+                        registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
+                    }
                 }
             }
         }
@@ -382,9 +385,14 @@ int Sintaxis::procDefExpresion(int &tipoResultado)
     else if (tokActual.tipoToken == LIN_CADENA) tipoResultado = RES_CADENA;
     else if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
         tipoResultado = semantica.getTipoIdentificador(tokActual.token);
+
+        // Si no existe, pero estamos en modo semántico, es error.
+        // Si estamos en modo sintáctico, asumimos que existe y es entero para no molestar.
         if (tipoResultado == RES_NO_DECL) {
-            registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
-            tipoResultado = RES_ENTERO; // Asumimos entero para continuar
+            if (realizarAnalisisSemantico) {
+                registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+            }
+            tipoResultado = RES_ENTERO; // Valor dummy para continuar
         }
     }
 
@@ -396,10 +404,8 @@ int Sintaxis::procDefExpresion(int &tipoResultado)
             sigToken();
             if (tokActual.token == "+" || tokActual.token == "-" || tokActual.token == "/" || tokActual.token == "*")
             {
-                string op = tokActual.token;
+                // Aqui iría logica de tipos resultantes complejos
                 sigToken();
-                // Validacion simplificada del segundo operando...
-                // (Para hacerlo robusto se requiere recursividad compleja, aqui mantenemos estructura lineal)
             }
             else
             {
@@ -442,35 +448,46 @@ int Sintaxis::procDefIdentificador()
     int tipoVar = semantica.getTipoIdentificador(nombreVar);
 
     if (tipoVar == RES_NO_DECL) {
-        // No retornamos error fatal, solo registramos y seguimos
-        registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
-        tipoVar = RES_ENTERO; // Dummy type
+        if (realizarAnalisisSemantico) {
+            registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+        }
+        tipoVar = RES_ENTERO;
     }
 
     sigToken();
     if (tokActual.token == "=")
     {
-        if (tipoVar == RES_FUNCION) registrarError(ERR_SEMANTICA_IDENT_FUNCION_MAL_USO);
+        if (realizarAnalisisSemantico && tipoVar == RES_FUNCION)
+            registrarError(ERR_SEMANTICA_IDENT_FUNCION_MAL_USO);
 
         sigToken();
         int tipoExpresion = 0;
-        // CORRECCION: Pasar variable
         error = procDefExpresion(tipoExpresion);
 
         if (error == ERR_NO_SINTAX_ERROR) {
-             if (!semantica.sonTiposCompatibles(tipoVar, tipoExpresion)) {
-                 registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
+             // Chequeo de tipos (Solo si semántica está activa)
+             if (realizarAnalisisSemantico) {
+                 if (!semantica.sonTiposCompatibles(tipoVar, tipoExpresion)) {
+                     registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
+                 }
              }
         }
     }
     else if (tokActual.token == "++" || tokActual.token == "--")
     {
-        if (tipoVar != RES_ENTERO && tipoVar != RES_FLOTANTE)
-            registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_ENTERO);
+        if (realizarAnalisisSemantico) {
+            if (tipoVar != RES_ENTERO && tipoVar != RES_FLOTANTE)
+                registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_ENTERO);
+        }
         sigToken();
     }
     else if (tipoVar != RES_FUNCION)
-        error = ERR_SEMANTICA_FUNCION_NO_DECL;
+    {
+         // Si es una llamada a función vacía? Depende de tu gramática
+         // De momento lo dejamos como error de estructura si no es funcion
+         if (realizarAnalisisSemantico)
+             error = ERR_SEMANTICA_FUNCION_NO_DECL;
+    }
 
     return error;
 }
@@ -506,13 +523,11 @@ string Sintaxis::mensajeError(int err)
     return s;
 }
 
-// Estos Wrappers ahora usan Semantica
 int Sintaxis::agregarIdentificador(string iden, int tipo, int linea)
 {
     return semantica.agregarIdentificador(iden, tipo);
 }
 
-// Este se puede quedar vacío o eliminarse si no lo usas en main
 vector<tToken> Sintaxis::getListaIdentificadores()
 {
     vector<tToken> vacio;

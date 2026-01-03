@@ -75,11 +75,12 @@ int main(int argc, char* argv[])
     //-----------------------
 
 
+    // ... (El principio del main sigue igual) ...
+
     switch (modoEjecucion)
     {
         case 'L' :
-            error = lex.generaLexico(tCars, errToken, true);
-
+            error = lex.generaLexico(tCars, errToken, false);
             if (error == ERR_NOERROR)
                 lex.imprimir();
             else
@@ -87,31 +88,44 @@ int main(int argc, char* argv[])
             cout << "Total de lineas procesadas: " << lex.getLineas() << "\n";
             break;
 
-        case 'S' :
-            // 1. Primero generamos el léxico (sin imprimir tokens)
+        case 'S' : // SOLO SINTAXIS
             error = lex.generaLexico(tCars, errToken, false);
 
             if (error == ERR_NOERROR)
             {
-                // 2. Si el léxico está bien, pasamos al sintáctico
-                Sintaxis sintax(lex);
+                // 1. IMPRIMIMOS LOS TOKENS AQUI
+                lex.imprimir();
 
-                // Ejecutamos el análisis (ahora guarda los errores internamente)
+                // 2. Ejecutamos el analisis sintactico (sin semantica)
+                cout << "=== INICIANDO ANALISIS SINTACTICO ===" << endl;
+                Sintaxis sintax(lex, false);
                 sintax.generaSintaxis();
-
-                // 3. Imprimimos el reporte de errores (o éxito) usando el nuevo método
                 sintax.imprimirErrores();
             }
             else
             {
-                // Si falla el léxico, ni siquiera intentamos el sintáctico
                 cout << "ERROR LEXICO FATAL: " << error << " :: " << errToken << "\n";
             }
-
-            cout << "Total de lineas procesadas: " << lex.getLineas() << "\n";
             break;
 
-        case 'M' :
+        case 'M' : // SINTAXIS + SEMANTICA
+            error = lex.generaLexico(tCars, errToken, false);
+
+            if (error == ERR_NOERROR)
+            {
+                // 1. TAMBIEN LOS IMPRIMIMOS AQUI SI QUIERES VERLOS
+                lex.imprimir();
+
+                // 2. Ejecutamos el analisis semantico
+                cout << "=== INICIANDO ANALISIS SEMANTICO ===" << endl;
+                Sintaxis sintax(lex, true);
+                sintax.generaSintaxis();
+                sintax.imprimirErrores();
+            }
+            else
+            {
+                cout << "ERROR LEXICO FATAL: " << error << " :: " << errToken << "\n";
+            }
             break;
 
         case 'B' :

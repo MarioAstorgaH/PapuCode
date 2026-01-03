@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include "lexico.h"     // <--- Aquí ya vienen todos los #define
+#include "lexico.h"
 #include "semantica.h"
 
 using namespace std;
@@ -24,6 +24,9 @@ private:
     int iToken;
     tToken tokActual;
     std::queue<InfoError> colaErrores;
+
+    // Interruptor para activar/desactivar semántica
+    bool realizarAnalisisSemantico;
 
     // Métodos de utilidad interna
     void sigToken();
@@ -49,7 +52,8 @@ private:
     string getStrTipoIdentificador(int tipo);
 
 public:
-    Sintaxis(Lexico lex);
+    // Constructor actualizado
+    Sintaxis(Lexico lex, bool activarSemantica);
     ~Sintaxis();
 
     int generaSintaxis();
