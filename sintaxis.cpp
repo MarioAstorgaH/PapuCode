@@ -1,62 +1,20 @@
-#include <iostream>
-#include <list>
-#include <string>
-#include <cctype>
-#include "lexico.h"
 #include "sintaxis.h"
 
-using namespace std;
-
-// Constructor coincidente con el .h
-Sintaxis::Sintaxis(Lexico lex, bool activarSemantica)
+// Constructor que inicializa los flags de semántica y bytecode
+Sintaxis::Sintaxis(Lexico lex, bool activarSemantica, bool activarBytecode)
 {
     lexico = lex;
     lstTokens = lex.get();
     iToken = 0;
     tokActual = {0, ""};
     realizarAnalisisSemantico = activarSemantica;
+    generarCodigo = activarBytecode;
 }
 
-Sintaxis::~Sintaxis()
-{
-}
+Sintaxis::~Sintaxis() {}
 
-void Sintaxis::sincronizar()
-{
-    if (tokActual.tipoToken == LIN_EOF) return;
-    sigToken();
-    while (tokActual.tipoToken != LIN_EOLN && tokActual.tipoToken != LIN_EOF)
-    {
-        sigToken();
-    }
-    if (tokActual.tipoToken == LIN_EOLN)
-    {
-        sigToken();
-    }
-}
-
-void Sintaxis::registrarError(int codigo)
-{
-    if (colaErrores.size() > 100) return;
-
-    InfoError errorInfo;
-    errorInfo.codigo = codigo;
-    errorInfo.mensaje = mensajeError(codigo);
-    errorInfo.linea = tokActual.linea;
-    colaErrores.push(errorInfo);
-}
-
-int Sintaxis::generaSintaxis()
-{
-    procPrincipal();
-    if (!colaErrores.empty()) {
-        return colaErrores.front().codigo;
-    }
-    return ERR_NO_SINTAX_ERROR;
-}
-
-void Sintaxis::sigToken()
-{
+// Avanza al siguiente token
+void Sintaxis::sigToken() {
     if (iToken >= lstTokens.size()) {
         tokActual.tipoToken = LIN_EOF;
         return;
@@ -65,91 +23,94 @@ void Sintaxis::sigToken()
     iToken++;
 }
 
-int Sintaxis::procPrincipal()
-{
+// Recuperación de errores (Panic Mode)
+void Sintaxis::sincronizar() {
+    if (tokActual.tipoToken == LIN_EOF) return;
+    sigToken();
+    while (tokActual.tipoToken != LIN_EOLN && tokActual.tipoToken != LIN_EOF) {
+        sigToken();
+    }
+    if (tokActual.tipoToken == LIN_EOLN) {
+        sigToken();
+    }
+}
+
+// Registra errores en la cola
+void Sintaxis::registrarError(int codigo) {
+    if (colaErrores.size() > 100) return;
+    InfoError errorInfo = {codigo, mensajeError(codigo), tokActual.linea};
+    colaErrores.push(errorInfo);
+}
+
+// Método principal público
+int Sintaxis::generaSintaxis() {
+    procPrincipal();
+    return colaErrores.empty() ? ERR_NO_SINTAX_ERROR : colaErrores.front().codigo;
+}
+
+// =========================================================================
+// MÉTODOS DE LA GRAMÁTICA
+// =========================================================================
+
+int Sintaxis::procPrincipal() {
     int error = ERR_NO_SINTAX_ERROR;
     int tipoIdent;
     string ident;
 
-    sigToken();
+    sigToken(); // Leer primer token
 
-    while (tokActual.tipoToken != RES_INICIO && tokActual.tipoToken != LIN_EOF)
-    {
+    while (tokActual.tipoToken != RES_INICIO && tokActual.tipoToken != LIN_EOF) {
         error = ERR_NO_SINTAX_ERROR;
 
-        if (tokActual.tipoToken == RES_ENTERO || tokActual.tipoToken == RES_FLOTANTE || tokActual.tipoToken == RES_CADENA)
-        {
+        // Declaración de variables (entero, flotante, cadena)
+        if (tokActual.tipoToken == RES_ENTERO || tokActual.tipoToken == RES_FLOTANTE || tokActual.tipoToken == RES_CADENA) {
             tipoIdent = tokActual.tipoToken;
             sigToken();
-            if (tokActual.tipoToken == LIN_IDENTIFICADOR)
-            {
+            if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
                 ident = tokActual.token;
                 sigToken();
-                if (tokActual.tipoToken == LIN_EOLN)
-                {
-                    // LÓGICA DE INTERRUPTOR SEMÁNTICO
+                if (tokActual.tipoToken == LIN_EOLN) {
                     if (realizarAnalisisSemantico) {
-                        int errSemantico = agregarIdentificador(ident, tipoIdent, 0);
-                        if (errSemantico != ERR_SEMANTICA_NO_ERROR) {
-                             registrarError(errSemantico);
-                        }
+                        int err = agregarIdentificador(ident, tipoIdent, 0);
+                        if (err != 0) registrarError(err);
                     } else {
-                        // Si es solo sintaxis, agregamos "a ciegas" para no romper el parser luego
                         agregarIdentificador(ident, tipoIdent, 0);
                     }
                     sigToken();
-                }
-                else
-                    error = ERR_EOLN;
-            }
-            else
-                error = ERR_IDENTIFICADOR;
+                } else error = ERR_EOLN;
+            } else error = ERR_IDENTIFICADOR;
         }
-        else if (tokActual.tipoToken == RES_DEF)
-        {
+        // Declaración de funciones (def)
+        else if (tokActual.tipoToken == RES_DEF) {
             tipoIdent = RES_FUNCION;
             sigToken();
-            if (tokActual.tipoToken == LIN_IDENTIFICADOR)
-            {
+            if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
                 ident = tokActual.token;
                 sigToken();
-                if (tokActual.tipoToken == LIN_EOLN)
-                {
+                if (tokActual.tipoToken == LIN_EOLN) {
                     if (realizarAnalisisSemantico) {
-                        int errSemantico = agregarIdentificador(ident, tipoIdent, 0);
-                        if (errSemantico == ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE) {
-                            registrarError(errSemantico);
-                        }
+                        int err = agregarIdentificador(ident, tipoIdent, 0);
+                        if (err == ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE) registrarError(err);
                     } else {
                         agregarIdentificador(ident, tipoIdent, 0);
                     }
 
                     sigToken();
-                    procInstrucciones();
+                    procInstrucciones(); // Cuerpo de la función
 
-                    if (tokActual.tipoToken == RES_FINDEF)
-                    {
+                    if (tokActual.tipoToken == RES_FINDEF) {
                         sigToken();
-                        if (tokActual.tipoToken == LIN_EOLN)
-                            sigToken();
-                        else
-                            error = ERR_EOLN;
-                    }
-                    else
-                        error = ERR_FINDEF;
-                }
-                else
-                    error = ERR_EOLN;
-            }
-            else
-                error = ERR_IDENTIFICADOR;
+                        if (tokActual.tipoToken == LIN_EOLN) sigToken();
+                        else error = ERR_EOLN;
+                    } else error = ERR_FINDEF;
+                } else error = ERR_EOLN;
+            } else error = ERR_IDENTIFICADOR;
         }
-        else if (tokActual.tipoToken == LIN_EOLN)
-        {
+        // Saltos de línea vacíos
+        else if (tokActual.tipoToken == LIN_EOLN) {
             sigToken();
         }
-        else
-        {
+        else {
             error = ERR_INICIO;
         }
 
@@ -159,28 +120,23 @@ int Sintaxis::procPrincipal()
         }
     }
 
-    if (tokActual.tipoToken == RES_INICIO)
-    {
+    // Bloque Principal (inicio ... final)
+    if (tokActual.tipoToken == RES_INICIO) {
         sigToken();
-        if (tokActual.tipoToken == LIN_EOLN)
-        {
+        if (tokActual.tipoToken == LIN_EOLN) {
             sigToken();
             procInstrucciones();
-        }
-        else
-        {
+        } else {
             registrarError(ERR_EOLN);
             sincronizar();
             procInstrucciones();
         }
 
-        if (tokActual.tipoToken != RES_FINAL)
-        {
+        if (tokActual.tipoToken != RES_FINAL) {
             registrarError(ERR_FINAL);
         }
     }
-
-    return colaErrores.empty() ? ERR_NO_SINTAX_ERROR : colaErrores.front().codigo;
+    return colaErrores.empty() ? 0 : colaErrores.front().codigo;
 }
 
 int Sintaxis::procInstrucciones()
@@ -194,12 +150,11 @@ int Sintaxis::procInstrucciones()
            tokActual.tipoToken != RES_FINSI)
     {
         error = ERR_NO_SINTAX_ERROR;
-
         switch (tokActual.tipoToken)
         {
             case RES_SI : error = procDefSi(); break;
-            case RES_CICLO : error = procDefCiclo(); break;
             case RES_MIENTRAS : error = procDefMientras(); break;
+            case RES_CICLO : error = procDefCiclo(); break;
             case RES_SALIDA : error = procDefSalida(); break;
             case RES_ENTRADA : error = procDefEntrada(); break;
             case LIN_IDENTIFICADOR : error = procDefIdentificador(); break;
@@ -207,22 +162,17 @@ int Sintaxis::procInstrucciones()
             default: error = ERR_INSTRUCCION_DESCONOCIDA; break;
         }
 
-        if (error != ERR_NO_SINTAX_ERROR)
-        {
+        if (error != ERR_NO_SINTAX_ERROR) {
             registrarError(error);
             sincronizar();
-        }
-        else
-        {
-            if (tokActual.tipoToken == LIN_EOLN)
-            {
+        } else {
+            if (tokActual.tipoToken == LIN_EOLN) {
                 sigToken();
+                // Verificamos si el bloque terminó después del EOLN
                 if (tokActual.tipoToken == RES_FINMI || tokActual.tipoToken == RES_FINDEF ||
                     tokActual.tipoToken ==  RES_FINAL || tokActual.tipoToken ==  RES_FINSI)
                     break;
-            }
-            else
-            {
+            } else {
                 registrarError(ERR_EOLN);
                 sincronizar();
             }
@@ -231,84 +181,25 @@ int Sintaxis::procInstrucciones()
     return ERR_NO_SINTAX_ERROR;
 }
 
-int Sintaxis::procDefCiclo()
-{
-    int error = ERR_NO_SINTAX_ERROR;
-    sigToken();
-    return error;
-}
-
-int Sintaxis::procDefSi()
-{
-    int error = ERR_NO_SINTAX_ERROR;
-
-    error = procDefCondicion();
-    if (error == ERR_NO_SINTAX_ERROR && tokActual.tipoToken == LIN_EOLN)
-    {
-        sigToken();
-        procInstrucciones();
-        if (tokActual.tipoToken == RES_FINSI)
-            sigToken();
-        else
-            error = ERR_FINSI;
-    }
-    else if (error == ERR_NO_SINTAX_ERROR)
-        error = ERR_EOLN;
-
-    return error;
-}
-
-int Sintaxis::procDefMientras()
-{
-    int error = ERR_NO_SINTAX_ERROR;
-    error = procDefCondicion();
-    if (error == ERR_NO_SINTAX_ERROR && tokActual.tipoToken == LIN_EOLN)
-    {
-        sigToken();
-        procInstrucciones();
-        if (tokActual.tipoToken == RES_FINMI)
-            sigToken();
-        else
-            error = ERR_FINMI;
-    }
-    else if (error == ERR_NO_SINTAX_ERROR)
-        error = ERR_EOLN;
-
-    return error;
-}
-
 int Sintaxis::procDefSalida()
 {
     int error = ERR_NO_SINTAX_ERROR;
     sigToken();
-    if (tokActual.token == "(")
-    {
-        while (true)
-        {
+    if (tokActual.token == "(") {
+        while (true) {
             sigToken();
-            int tipoResultado = 0;
-            error = procDefExpresion(tipoResultado);
+            int tipo = 0;
+            error = procDefExpresion(tipo); // La expresión deja el valor en la pila
+            if (error != ERR_NO_SINTAX_ERROR) break;
 
-            if (error != ERR_NO_SINTAX_ERROR)
-                break;
+            // GENERACION: Imprimir tope de pila
+            if (generarCodigo) generador.emitir("OUT");
 
-            if (tokActual.token == ",")
-                ;
-            else if (tokActual.token == ")")
-            {
-                sigToken();
-                break;
-            }
-            else
-            {
-                error = ERR_PARENTESIS_CERRAR;
-                break;
-            }
+            if (tokActual.token == ",") ; // Siguiente argumento
+            else if (tokActual.token == ")") { sigToken(); break; }
+            else { error = ERR_PARENTESIS_CERRAR; break; }
         }
-    }
-    else
-        error = ERR_PARENTESIS_ABRIR;
-
+    } else error = ERR_PARENTESIS_ABRIR;
     return error;
 }
 
@@ -316,128 +207,21 @@ int Sintaxis::procDefEntrada()
 {
     int error = ERR_NO_SINTAX_ERROR;
     sigToken();
-    if (tokActual.token == "(")
-    {
+    if (tokActual.token == "(") {
         sigToken();
-        if (tokActual.tipoToken == LIN_IDENTIFICADOR)
-        {
+        if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
             string nombre = tokActual.token;
-            // Validar que la variable exista (Solo si semántica está activa)
-            if (realizarAnalisisSemantico) {
-                if (!semantica.existeIdentificador(nombre)) {
-                    registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
-                }
-            }
-
-            sigToken();
-            if (tokActual.token == ")")
-                sigToken();
-            else
-                error = ERR_PARENTESIS_CERRAR;
-        }
-        else
-            error = ERR_IDENTIFICADOR;
-    }
-    else
-        error = ERR_PARENTESIS_ABRIR;
-    return error;
-}
-
-int Sintaxis::procDefCondicion()
-{
-    int error = ERR_NO_SINTAX_ERROR;
-    int tipoIzq = 0;
-    int tipoDer = 0;
-
-    sigToken();
-    error = procDefExpresion(tipoIzq);
-
-    if (error == ERR_NO_SINTAX_ERROR)
-    {
-        if (tokActual.token == "==" || tokActual.token == ">=" || tokActual.token == "<=" ||
-            tokActual.token == "<>" || tokActual.token == ">" || tokActual.token == "<")
-        {
-            sigToken();
-            error = procDefExpresion(tipoDer);
-
-            // Validar tipos compatibles (Solo si semántica está activa)
-            if (error == ERR_NO_SINTAX_ERROR) {
-                if (realizarAnalisisSemantico) {
-                    if(!semantica.sonTiposCompatibles(tipoIzq, tipoDer)) {
-                        registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
-                    }
-                }
-            }
-        }
-        else
-            error = ERR_OP_LOGICO;
-    }
-    return error;
-}
-
-int Sintaxis::procDefExpresion(int &tipoResultado)
-{
-    int error = ERR_NO_SINTAX_ERROR;
-
-    // Determinacion inicial del tipo
-    if (tokActual.tipoToken == LIN_NUM_ENTERO) tipoResultado = RES_ENTERO;
-    else if (tokActual.tipoToken == LIN_NUM_FLOTANTE) tipoResultado = RES_FLOTANTE;
-    else if (tokActual.tipoToken == LIN_CADENA) tipoResultado = RES_CADENA;
-    else if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
-        tipoResultado = semantica.getTipoIdentificador(tokActual.token);
-
-        // Si no existe, pero estamos en modo semántico, es error.
-        // Si estamos en modo sintáctico, asumimos que existe y es entero para no molestar.
-        if (tipoResultado == RES_NO_DECL) {
-            if (realizarAnalisisSemantico) {
+            if (realizarAnalisisSemantico && !semantica.existeIdentificador(nombre))
                 registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
-            }
-            tipoResultado = RES_ENTERO; // Valor dummy para continuar
-        }
-    }
 
-    while (true)
-    {
-        if (tokActual.tipoToken == LIN_CADENA || tokActual.tipoToken == LIN_NUMERO || tokActual.tipoToken == LIN_NUM_ENTERO ||
-            tokActual.tipoToken == LIN_NUM_FLOTANTE || tokActual.tipoToken == LIN_IDENTIFICADOR)
-        {
+            // GENERACION: Leer teclado y guardar
+            if (generarCodigo) generador.emitir("IN", nombre);
+
             sigToken();
-            if (tokActual.token == "+" || tokActual.token == "-" || tokActual.token == "/" || tokActual.token == "*")
-            {
-                // Aqui iría logica de tipos resultantes complejos
-                sigToken();
-            }
-            else
-            {
-                if (!(tokActual.token == ")" || tokActual.token == "," || tokActual.token == "==" || tokActual.token == ">=" ||
-                    tokActual.token == "<=" || tokActual.token == "<>" || tokActual.token == ">" || tokActual.token == "<") &&
-                    tokActual.tipoToken != LIN_EOLN)
-                    error = ERR_PARENTESIS_CERRAR;
-                break;
-            }
-        }
-        else if (tokActual.token == "(")
-        {
-            sigToken();
-            error = procDefExpresion(tipoResultado);
-            if (error != ERR_NO_SINTAX_ERROR) break;
-
-            if (tokActual.token == ")")
-            {
-                sigToken();
-                if (tokActual.token == "+" || tokActual.token == "-" || tokActual.token == "/" || tokActual.token == "*")
-                    sigToken();
-                else
-                    break;
-            }
-        }
-        else
-        {
-            error = ERR_IDENTIFICADOR;
-            break;
-        }
-    }
-
+            if (tokActual.token == ")") sigToken();
+            else error = ERR_PARENTESIS_CERRAR;
+        } else error = ERR_IDENTIFICADOR;
+    } else error = ERR_PARENTESIS_ABRIR;
     return error;
 }
 
@@ -447,106 +231,235 @@ int Sintaxis::procDefIdentificador()
     string nombreVar = tokActual.token;
     int tipoVar = semantica.getTipoIdentificador(nombreVar);
 
-    if (tipoVar == RES_NO_DECL) {
-        if (realizarAnalisisSemantico) {
-            registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
-        }
-        tipoVar = RES_ENTERO;
+    // Validación Semántica
+    if (realizarAnalisisSemantico && tipoVar == RES_NO_DECL) {
+        registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+        tipoVar = RES_ENTERO; // Asumimos entero para continuar
     }
 
     sigToken();
-    if (tokActual.token == "=")
-    {
+
+    // Asignación simple (=)
+    if (tokActual.token == "=") {
         if (realizarAnalisisSemantico && tipoVar == RES_FUNCION)
             registrarError(ERR_SEMANTICA_IDENT_FUNCION_MAL_USO);
 
         sigToken();
-        int tipoExpresion = 0;
-        error = procDefExpresion(tipoExpresion);
+        int tipoExpr = 0;
+
+        // Procesamos expresión (Genera código PUSH/ADD/ETC)
+        error = procDefExpresion(tipoExpr);
 
         if (error == ERR_NO_SINTAX_ERROR) {
-             // Chequeo de tipos (Solo si semántica está activa)
-             if (realizarAnalisisSemantico) {
-                 if (!semantica.sonTiposCompatibles(tipoVar, tipoExpresion)) {
-                     registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
-                 }
-             }
+             if (realizarAnalisisSemantico && !semantica.sonTiposCompatibles(tipoVar, tipoExpr))
+                 registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
+
+             // GENERACION: Guardar tope de pila
+             if (generarCodigo) generador.emitir("STORE", nombreVar);
         }
     }
-    else if (tokActual.token == "++" || tokActual.token == "--")
-    {
-        if (realizarAnalisisSemantico) {
-            if (tipoVar != RES_ENTERO && tipoVar != RES_FLOTANTE)
-                registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_ENTERO);
+    // Incremento/Decremento (++, --)
+    else if (tokActual.token == "++" || tokActual.token == "--") {
+        string op = tokActual.token;
+        if (realizarAnalisisSemantico && tipoVar != RES_ENTERO && tipoVar != RES_FLOTANTE)
+             registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_ENTERO);
+
+        // i++ -> LOAD i, PUSH 1, ADD, STORE i
+        if (generarCodigo) {
+            generador.emitir("LOAD", nombreVar);
+            generador.emitir("PUSH", "1");
+            generador.emitir(op == "++" ? "ADD" : "SUB");
+            generador.emitir("STORE", nombreVar);
         }
         sigToken();
     }
-    else if (tipoVar != RES_FUNCION)
-    {
-         // Si es una llamada a función vacía? Depende de tu gramática
-         // De momento lo dejamos como error de estructura si no es funcion
-         if (realizarAnalisisSemantico)
-             error = ERR_SEMANTICA_FUNCION_NO_DECL;
+    // Llamada a función (si fuera el caso, aqui no implementado completo)
+    else if (tipoVar != RES_FUNCION) {
+         if (realizarAnalisisSemantico) error = ERR_SEMANTICA_FUNCION_NO_DECL;
     }
 
     return error;
 }
 
-
-string Sintaxis::mensajeError(int err)
+int Sintaxis::procDefExpresion(int &tipoResultado)
 {
-    string s = "";
-    switch (err)
-    {
-        case ERR_NO_SINTAX_ERROR : s = "No se encontraron errores"; break;
-        case ERR_INICIO : s = "se esperaba [INICIO]"; break;
-        case ERR_FINAL : s = "se esperaba [FINAL]"; break;
-        case ERR_FINDEF : s = "se esperaba [FINDEF]"; break;
-        case ERR_PARENTESIS_ABRIR : s = "se esperaba ("; break;
-        case ERR_PARENTESIS_CERRAR : s = "se esperaba )"; break;
-        case ERR_OP_LOGICO : s = "se esperaba operador logico"; break;
-        case ERR_FINMI : s = "se esperaba [FINMI]"; break;
-        case ERR_CONDICION : s = "error en la condicion"; break;
-        case ERR_FINSI : s = "se esperaba [FINSI]"; break;
-        case ERR_EOLN : s = "se esperaba Fin de Linea (EOLN)"; break;
-        case ERR_IDENTIFICADOR : s = "se esperaba un Identificador"; break;
-        case ERR_INSTRUCCION_DESCONOCIDA : s = "Instruccion desconocida o inesperada"; break;
+    int error = ERR_NO_SINTAX_ERROR;
 
-        case ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE : s = "ERROR SEMANTICO: Identificador ya declarado"; break;
-        case ERR_SEMANTICA_IDENTIFICADOR_NO_DECL : s = "ERROR SEMANTICO: Identificador NO declarado"; break;
-        case ERR_SEMANTICA_TIPOS_INCOMPATIBLES : s = "ERROR SEMANTICO: Tipos incompatibles"; break;
-        case ERR_SEMANTICA_IDENTIFICADOR_NO_ENTERO : s = "ERROR SEMANTICO: Se esperaba variable numerica"; break;
-        case ERR_SEMANTICA_IDENT_FUNCION_MAL_USO : s = "ERROR SEMANTICO: Mal uso de funcion/variable"; break;
-
-        default: s = "Error desconocido"; break;
+    // 1. PRIMER OPERANDO (Generar PUSH o LOAD)
+    if (tokActual.tipoToken == LIN_NUM_ENTERO || tokActual.tipoToken == LIN_NUM_FLOTANTE || tokActual.tipoToken == LIN_CADENA) {
+        if (generarCodigo) generador.emitir("PUSH", tokActual.token);
+        tipoResultado = (tokActual.tipoToken == LIN_CADENA) ? RES_CADENA :
+                        (tokActual.tipoToken == LIN_NUM_FLOTANTE ? RES_FLOTANTE : RES_ENTERO);
     }
-    return s;
+    else if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+        if (generarCodigo) generador.emitir("LOAD", tokActual.token);
+        tipoResultado = semantica.getTipoIdentificador(tokActual.token);
+        if (realizarAnalisisSemantico && tipoResultado == RES_NO_DECL) {
+             registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+             tipoResultado = RES_ENTERO;
+        }
+    }
+
+    // Consumir el operando
+    if (tokActual.token != "(") sigToken();
+    else { // Es paréntesis
+        sigToken();
+        error = procDefExpresion(tipoResultado);
+        if (tokActual.token == ")") sigToken();
+        else return ERR_PARENTESIS_CERRAR;
+    }
+
+    // 2. BUSCAR OPERADORES (+, -, *, /)
+    while (true)
+    {
+        if (tokActual.token == "+" || tokActual.token == "-" || tokActual.token == "/" || tokActual.token == "*")
+        {
+            string op = tokActual.token;
+            sigToken();
+            int tipoOp2 = 0;
+
+            // Recursividad para el segundo operando
+            error = procDefExpresion(tipoOp2);
+
+            // GENERACION
+            if (generarCodigo && error == ERR_NO_SINTAX_ERROR) {
+                if (op == "+") generador.emitir("ADD");
+                else if (op == "-") generador.emitir("SUB");
+                else if (op == "*") generador.emitir("MUL");
+                else if (op == "/") generador.emitir("DIV");
+            }
+        }
+        else
+        {
+            // CRITICO: Si encontramos un operador lógico (>, <, ==), paréntesis de cierre, coma o fin de linea
+            // debemos ROMPER el bucle y regresar, porque esos tokens pertenecen a procDefCondicion o procDefSalida.
+            if (tokActual.tipoToken == LIN_MAYOR || tokActual.tipoToken == LIN_MENOR ||
+                tokActual.token == ">" || tokActual.token == "<" ||
+                tokActual.token == "==" || tokActual.token == ">=" || tokActual.token == "<=" || tokActual.token == "<>" ||
+                tokActual.token == ")" || tokActual.token == "," || tokActual.tipoToken == LIN_EOLN || tokActual.tipoToken == LIN_EOF)
+            {
+                break; // Salida correcta
+            }
+            else
+            {
+                // Token inesperado en una expresión aritmética
+                error = ERR_PARENTESIS_CERRAR;
+                break;
+            }
+        }
+    }
+    return error;
 }
 
-int Sintaxis::agregarIdentificador(string iden, int tipo, int linea)
-{
-    return semantica.agregarIdentificador(iden, tipo);
+int Sintaxis::procDefCondicion() {
+    int error = ERR_NO_SINTAX_ERROR;
+    int t1=0, t2=0;
+
+    sigToken(); // Avanzar al primer token de la condicion
+
+    // 1. Expresión Izquierda
+    error = procDefExpresion(t1);
+
+    if (error == ERR_NO_SINTAX_ERROR) {
+        string op = tokActual.token;
+        int tipo = tokActual.tipoToken;
+
+        // Verificación robusta del operador lógico
+        bool esOperador = false;
+        if (tipo == LIN_MAYOR || tipo == LIN_MENOR) esOperador = true;
+        else if (op == "==" || op == ">=" || op == "<=" || op == "<>" || op == ">" || op == "<") esOperador = true;
+
+        if (esOperador) {
+            sigToken();
+            // 2. Expresión Derecha
+            error = procDefExpresion(t2);
+
+            if (error == ERR_NO_SINTAX_ERROR) {
+                // Semántica
+                if (realizarAnalisisSemantico && !semantica.sonTiposCompatibles(t1, t2)) {
+                    registrarError(ERR_SEMANTICA_TIPOS_INCOMPATIBLES);
+                }
+
+                // Generación Código
+                if (generarCodigo) {
+                    if (op == "==") generador.emitir("EQ");
+                    else if (tipo == LIN_MAYOR || op == ">") generador.emitir("GT");
+                    else if (tipo == LIN_MENOR || op == "<") generador.emitir("LT");
+                    else if (op == ">=") generador.emitir("GTE");
+                    else if (op == "<=") generador.emitir("LTE");
+                    else if (op == "<>") generador.emitir("NE");
+                }
+            }
+        } else {
+            error = ERR_OP_LOGICO;
+        }
+    }
+    return error;
 }
 
-vector<tToken> Sintaxis::getListaIdentificadores()
-{
-    vector<tToken> vacio;
-    return vacio;
+int Sintaxis::procDefSi() {
+    int error = ERR_NO_SINTAX_ERROR;
+
+    // 1. Condición
+    error = procDefCondicion();
+
+    if (error == ERR_NO_SINTAX_ERROR && tokActual.tipoToken == LIN_EOLN) {
+        sigToken();
+
+        // Generar etiqueta y salto
+        string lblFin = "";
+        if (generarCodigo) {
+            lblFin = generador.nuevaEtiqueta();
+            generador.emitir("JMPF", lblFin); // Saltar a Fin si Falso
+        }
+
+        procInstrucciones();
+
+        // Poner etiqueta destino
+        if (generarCodigo) generador.emitir("LABEL", lblFin);
+
+        if (tokActual.tipoToken == RES_FINSI) sigToken();
+        else error = ERR_FINSI;
+    } else if (error == ERR_NO_SINTAX_ERROR) error = ERR_EOLN;
+
+    return error;
 }
 
-int Sintaxis::getTipoIdentificador(string iden)
-{
-    return semantica.getTipoIdentificador(iden);
+int Sintaxis::procDefMientras() { return ERR_NO_SINTAX_ERROR; } // Pendiente
+int Sintaxis::procDefCiclo() { return ERR_NO_SINTAX_ERROR; } // Pendiente
+
+// =======================
+// UTILIDADES
+// =======================
+
+void Sintaxis::imprimirBytecode() { generador.imprimir(); }
+int Sintaxis::agregarIdentificador(string id, int t, int l) { return semantica.agregarIdentificador(id, t); }
+int Sintaxis::getTipoIdentificador(string id) { return semantica.getTipoIdentificador(id); }
+
+string Sintaxis::mensajeError(int err) {
+    if (err == ERR_NO_SINTAX_ERROR) return "No error";
+    if (err == ERR_INICIO) return "Se esperaba [INICIO]";
+    if (err == ERR_FINAL) return "Se esperaba [FINAL]";
+    if (err == ERR_FINDEF) return "Se esperaba [FINDEF]";
+    if (err == ERR_PARENTESIS_ABRIR) return "Se esperaba (";
+    if (err == ERR_PARENTESIS_CERRAR) return "Se esperaba )";
+    if (err == ERR_OP_LOGICO) return "Se esperaba operador logico";
+    if (err == ERR_FINMI) return "Se esperaba [FINMI]";
+    if (err == ERR_CONDICION) return "Error en la condicion";
+    if (err == ERR_FINSI) return "Se esperaba [FINSI]";
+    if (err == ERR_EOLN) return "Se esperaba Fin de Linea";
+    if (err == ERR_IDENTIFICADOR) return "Se esperaba Identificador";
+
+    if (err == ERR_SEMANTICA_IDENTIFICADOR_NO_DECL) return "Identificador no declarado";
+    if (err == ERR_SEMANTICA_TIPOS_INCOMPATIBLES) return "Tipos incompatibles";
+    if (err == ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE) return "Identificador ya declarado";
+    if (err == ERR_SEMANTICA_IDENT_FUNCION_MAL_USO) return "Mal uso de funcion";
+    if (err == ERR_SEMANTICA_IDENTIFICADOR_NO_ENTERO) return "Se esperaba entero";
+
+    return "Error sintactico codigo " + to_string(err);
 }
 
-string Sintaxis::getStrTipoIdentificador(int tipo)
-{
-    if (tipo == RES_ENTERO) return "ENTERO";
-    if (tipo == RES_FLOTANTE) return "FLOTANTE";
-    if (tipo == RES_CADENA) return "CADENA";
-    return "OTRO";
-}
-
+// IMPRIMIR ERRORES (Agregado para evitar error de enlace)
 void Sintaxis::imprimirErrores()
 {
     if (colaErrores.empty()) {

@@ -8,4 +8,6 @@ add_executable(PapuCode
         lexico.cpp
         sintaxis.cpp
         semantica.cpp
-        semantica.h)
+        semantica.h
+        bytecode.cpp
+        bytecode.h)

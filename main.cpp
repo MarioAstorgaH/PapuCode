@@ -19,7 +19,6 @@ using namespace std;
 int main(int argc, char* argv[])
 {
     vector<char>tCars;
-    // vector<tToken> lst; // No se usa en el main directamente, se puede quitar si quieres
     int error;
     string errToken;
 
@@ -33,7 +32,7 @@ int main(int argc, char* argv[])
         cout << "Uso: " << argv[0] << " <archivo.txt> <parametro>\n";
         cout << "   <parametro>:\n";
         cout << "      -L : (Lexico) para mostrar la lista de tokens\n";
-        cout << "      -S : (Sintaxis) para hacer la revision sintactica y mostrar errores\n";
+        cout << "      -S : (Sintaxis) para hacer la revision sintactica\n";
         cout << "      -M : (seMantica) muestra la lista de identificadores declarados\n";
         cout << "      -B : (Byte-code) mostrar el byte-code generado\n";
         cout << "      -R : (Run-time) Ejecuta el codigo compilado\n";
@@ -51,31 +50,22 @@ int main(int argc, char* argv[])
     {
         string arg = argv[2];
 
-        if (arg == "-L")
-            modoEjecucion = 'L';
-        else if (arg == "-S")
-            modoEjecucion = 'S';
-        else if (arg == "-M")
-            modoEjecucion = 'M';
-        else if (arg == "-B")
-            modoEjecucion = 'B';
-        else if (arg == "-R")
-            modoEjecucion = 'R';
-        else
-            modoEjecucion = 'S';
+        if (arg == "-L") modoEjecucion = 'L';
+        else if (arg == "-S") modoEjecucion = 'S';
+        else if (arg == "-M") modoEjecucion = 'M';
+        else if (arg == "-B") modoEjecucion = 'B'; // Agregado
+        else if (arg == "-R") modoEjecucion = 'R';
+        else modoEjecucion = 'S';
     }
 
 
-    //----------------------- leer todos los caracteres del archivo. Meterlos a una lista
+    //----------------------- leer todos los caracteres del archivo
     char c;
     while (archivo.get(c))
         tCars.push_back(c);
     tCars.push_back('\n');
     archivo.close();
     //-----------------------
-
-
-    // ... (El principio del main sigue igual) ...
 
     switch (modoEjecucion)
     {
@@ -93,19 +83,17 @@ int main(int argc, char* argv[])
 
             if (error == ERR_NOERROR)
             {
-                // 1. IMPRIMIMOS LOS TOKENS AQUI
                 lex.imprimir();
-
-                // 2. Ejecutamos el analisis sintactico (sin semantica)
                 cout << "=== INICIANDO ANALISIS SINTACTICO ===" << endl;
-                Sintaxis sintax(lex, false);
+
+                // CORRECCION: 3 argumentos (Lexico, Semantica=OFF, Bytecode=OFF)
+                Sintaxis sintax(lex, false, false);
+
                 sintax.generaSintaxis();
                 sintax.imprimirErrores();
             }
             else
-            {
                 cout << "ERROR LEXICO FATAL: " << error << " :: " << errToken << "\n";
-            }
             break;
 
         case 'M' : // SINTAXIS + SEMANTICA
@@ -113,25 +101,40 @@ int main(int argc, char* argv[])
 
             if (error == ERR_NOERROR)
             {
-                // 1. TAMBIEN LOS IMPRIMIMOS AQUI SI QUIERES VERLOS
-                lex.imprimir();
-
-                // 2. Ejecutamos el analisis semantico
                 cout << "=== INICIANDO ANALISIS SEMANTICO ===" << endl;
-                Sintaxis sintax(lex, true);
+
+                // CORRECCION: 3 argumentos (Lexico, Semantica=ON, Bytecode=OFF)
+                Sintaxis sintax(lex, true, false);
+
                 sintax.generaSintaxis();
                 sintax.imprimirErrores();
             }
             else
-            {
                 cout << "ERROR LEXICO FATAL: " << error << " :: " << errToken << "\n";
-            }
             break;
 
-        case 'B' :
+        case 'B' : // BYTECODE
+            error = lex.generaLexico(tCars, errToken, false);
+            if (error == ERR_NOERROR)
+            {
+                cout << "=== GENERANDO BYTECODE ===" << endl;
+
+                // CORRECCION: 3 argumentos (Lexico, Semantica=ON, Bytecode=ON)
+                // Necesitamos semántica ON para saber los tipos de las variables al generar código
+                Sintaxis sintax(lex, true, true);
+
+                sintax.generaSintaxis();
+                sintax.imprimirErrores();
+
+                // Solo imprimimos el código si no hubo errores graves
+                sintax.imprimirBytecode();
+            }
+            else
+                cout << "ERROR LEXICO FATAL" << endl;
             break;
 
         case 'R' :
+            cout << "El modo Run-Time aun no esta implementado." << endl;
             break;
     }
 

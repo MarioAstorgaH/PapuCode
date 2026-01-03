@@ -7,6 +7,7 @@
 #include <queue>
 #include "lexico.h"
 #include "semantica.h"
+#include "bytecode.h" // <--- IMPORTAR
 
 using namespace std;
 
@@ -20,15 +21,17 @@ class Sintaxis {
 private:
     Lexico lexico;
     Semantica semantica;
+    GenBytecode generador; // <--- OBJETO GENERADOR
+
     vector<tToken> lstTokens;
     int iToken;
     tToken tokActual;
     std::queue<InfoError> colaErrores;
 
-    // Interruptor para activar/desactivar semántica
     bool realizarAnalisisSemantico;
+    bool generarCodigo; // <--- FLAG NUEVO
 
-    // Métodos de utilidad interna
+    // Métodos internos
     void sigToken();
     void registrarError(int codigo);
     void sincronizar();
@@ -45,20 +48,19 @@ private:
     int procDefExpresion(int &tipoResultado);
     int procDefIdentificador();
 
-    // Métodos auxiliares
+    // Auxiliares
     int agregarIdentificador(string iden, int tipo, int linea);
-    vector<tToken> getListaIdentificadores();
     int getTipoIdentificador(string iden);
-    string getStrTipoIdentificador(int tipo);
 
 public:
     // Constructor actualizado
-    Sintaxis(Lexico lex, bool activarSemantica);
+    Sintaxis(Lexico lex, bool activarSemantica, bool activarBytecode);
     ~Sintaxis();
 
     int generaSintaxis();
     string mensajeError(int err);
     void imprimirErrores();
+    void imprimirBytecode(); // Método puente para llamar a generador.imprimir()
 };
 
 #endif
