@@ -1,0 +1,36 @@
+flotante peso
+flotante altura
+flotante imc
+flotante alturaCuadrada
+
+inicio
+    salida("==================================")
+    salida("   CALCULADORA DE IMC (SALUD)     ")
+    salida("==================================")
+
+    salida("Ingresa tu Peso en Kg (ej: 70.5):")
+    entrada(peso)
+
+    salida("Ingresa tu Altura en Metros (ej: 1.75):")
+    entrada(altura)
+
+    # Calculo: IMC = Peso / (Altura * Altura)
+    alturaCuadrada = altura * altura
+    imc = peso / alturaCuadrada
+
+    salida("----------------------------------")
+    salida("Tu Indice de Masa Corporal es:", imc)
+
+    # Evaluacion simple
+    si imc >= 25.0
+        salida("Diagnostico: SOBREPESO")
+    sino
+        si imc < 18.5
+             salida("Diagnostico: BAJO PESO")
+        sino
+             salida("Diagnostico: PESO NORMAL")
+        finsi
+    finsi
+
+    salida("==================================")
+final

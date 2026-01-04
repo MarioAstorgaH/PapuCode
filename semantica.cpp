@@ -1,49 +1,46 @@
 #include "semantica.h"
 
 Semantica::Semantica() {
-    // Constructor vacio por ahora
+    // Constructor vacio
 }
 
+
 int Semantica::agregarIdentificador(string nombre, int tipo) {
-    if (existeIdentificador(nombre)) {
+    if (tablaSimbolos.find(nombre) != tablaSimbolos.end()) {
         return ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE;
     }
-    tToken nuevo;
-    nuevo.token = nombre;
-    nuevo.tipoToken = tipo;
-    tablaSimbolos.push_back(nuevo);
-    return ERR_NOERROR; // 0
+    cout << "[DEBUG Semantica] Agregando variable: " << nombre << endl;
+    tablaSimbolos[nombre] = tipo;
+    return ERR_SEMANTICA_NO_ERROR;
 }
 
 int Semantica::getTipoIdentificador(string nombre) {
-    for (const auto& token : tablaSimbolos) {
-        if (token.token == nombre) return token.tipoToken;
+    // ¡OJO! Si usamos tablaSimbolos[nombre] aqui, C++ crea la variable
+    // automaticamente si no existe. ESO ES LO QUE CAUSA EL BUG.
+    // Usamos .find() para solo leer.
+
+    auto it = tablaSimbolos.find(nombre);
+    if (it != tablaSimbolos.end()) {
+        return it->second; // Retornamos el tipo encontrado
     }
-    return RES_NO_DECL; // Retorna codigo indicando que no existe
+
+    return RES_NO_DECL; // Retornamos -1 indicando que no existe
 }
+
 
 bool Semantica::existeIdentificador(string nombre) {
-    return getTipoIdentificador(nombre) != RES_NO_DECL;
+    bool existe = tablaSimbolos.find(nombre) != tablaSimbolos.end();
+    cout << "[DEBUG Semantica] Buscando '" << nombre << "'. Encontrado: " << (existe ? "SI" : "NO") << endl;
+    return existe;
 }
+bool Semantica::sonTiposCompatibles(int tipo1, int tipo2) {
+    if (tipo1 == tipo2) return true;
 
-bool Semantica::sonTiposCompatibles(int tipoReceptor, int tipoValor) {
-    if (tipoReceptor == tipoValor) return true;
-    // Entero acepta Entero
-    // Flotante acepta Flotante y Entero (casting implicito)
-    if (tipoReceptor == RES_FLOTANTE && tipoValor == RES_ENTERO) return true;
+    // Enteros y flotantes se pueden mezclar
+    if ((tipo1 == RES_ENTERO || tipo1 == RES_FLOTANTE) &&
+        (tipo2 == RES_ENTERO || tipo2 == RES_FLOTANTE)) {
+        return true;
+        }
 
     return false;
-}
-
-int Semantica::obtenerTipoResultante(int tipo1, int tipo2, string operador) {
-    if (tipo1 == RES_CADENA || tipo2 == RES_CADENA) {
-        if (operador == "+") return RES_CADENA; // Concatenacion
-        return ERR_SEMANTICA_TIPOS_INCOMPATIBLES; // No se puede restar/mult cadenas
-    }
-
-    if (operador == "/" || tipo1 == RES_FLOTANTE || tipo2 == RES_FLOTANTE) {
-        return RES_FLOTANTE;
-    }
-
-    return RES_ENTERO;
 }

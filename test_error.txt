@@ -1,0 +1,32 @@
+entero n
+entero i
+entero resultado
+
+inicio
+    salida("================================")
+    salida("   PRUEBA DE ERROR SEMANTICO    ")
+    salida("================================")
+
+    salida("Ingresa un numero positivo:")
+
+    # AQUI ESTA EL ERROR: 'numero' no existe, existe 'n'
+    entrada(numero)
+
+    si numero < 0
+        salida("ERROR: No se puede calcular factorial de negativos.")
+    sino
+        resultado = 1
+        i = 1
+
+        mientras i <= numero
+            resultado = resultado * i
+            i = i + 1
+        finmi
+
+        salida("El factorial de", numero)
+        salida("es:", resultado)
+    finsi
+
+    salida("================================")
+    salida("Fin del proceso.")
+final

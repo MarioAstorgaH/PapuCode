@@ -83,34 +83,33 @@ void Runtime::run() {
             memoria[param] = v;
         }
 
-        // LECTURA DE NUMEROS (Validación estricta)
+        // LECTURA DE NUMEROS (Estricta: Falla si no es número)
         else if (op == "IN_NUM") {
             string input;
-            double d;
-            bool esNumero = false;
+            cout << "Ingrese numero para '" << param << "': ";
 
-            // Bucle hasta que el usuario escriba un numero valido
-            while (!esNumero) {
-                cout << "Ingrese numero para '" << param << "': ";
-                if (cin.peek() == '\n') cin.ignore();
-                cin >> input; // Usamos cin normal para numeros para evitar problemas con espacios
+            if (cin.peek() == '\n') cin.ignore();
+            cin >> input;
 
-                try {
-                    size_t idx;
-                    d = stod(input, &idx);
-                    // Verificamos que no haya letras despues del numero
-                    if (idx == input.size()) {
-                        esNumero = true;
-                    } else {
-                        cout << "Error: '" << input << "' no es un numero valido. Intente de nuevo." << endl;
-                    }
-                } catch (...) {
-                    cout << "Error: Entrada invalida. Se esperaba un numero." << endl;
+            try {
+                size_t idx;
+                double d = stod(input, &idx);
+
+                // Si sobran caracteres (ej: "12abc"), es un error fatal
+                if (idx != input.size()) {
+                    cerr << "Error Runtime: La entrada '" << input << "' no es un numero valido." << endl;
+                    exit(1); // <--- MATA EL PROGRAMA
                 }
-            }
 
-            Valor v; v.tipo = 0; v.valNum = d;
-            memoria[param] = v;
+                // Si todo bien, guardamos
+                Valor v; v.tipo = 0; v.valNum = d;
+                memoria[param] = v;
+
+            } catch (...) {
+                // Si la conversión falla totalmente (ej: "hola"), error fatal
+                cerr << "Error Runtime: Tipo incorrecto. Se esperaba un numero para variable '" << param << "'." << endl;
+                exit(1); // <--- MATA EL PROGRAMA
+            }
         }
         // --- ARITMETICA ---
         else if (op == "ADD") {
@@ -187,6 +186,16 @@ void Runtime::run() {
                     cerr << "Error: Etiqueta no encontrada " << param << endl;
                     exit(1);
                 }
+            }
+        }
+        // ... (Junto a JMPF) ...
+        else if (op == "JMP") {
+            if (etiquetas.find(param) != etiquetas.end()) {
+                ip = etiquetas[param];
+                continue;
+            } else {
+                cerr << "Error: Etiqueta " << param << " no encontrada" << endl;
+                exit(1);
             }
         }
         else if (op == "LABEL") {

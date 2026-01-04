@@ -147,7 +147,8 @@ int Sintaxis::procInstrucciones()
            tokActual.tipoToken != RES_FINAL &&
            tokActual.tipoToken != RES_FINDEF &&
            tokActual.tipoToken != RES_FINMI &&
-           tokActual.tipoToken != RES_FINSI)
+           tokActual.tipoToken != RES_FINSI &&
+           tokActual.tipoToken != RES_SINO) // <--- AGREGAR ESTO
     {
         error = ERR_NO_SINTAX_ERROR;
         switch (tokActual.tipoToken)
@@ -170,8 +171,9 @@ int Sintaxis::procInstrucciones()
                 sigToken();
                 // Verificamos si el bloque terminó después del EOLN
                 if (tokActual.tipoToken == RES_FINMI || tokActual.tipoToken == RES_FINDEF ||
-                    tokActual.tipoToken ==  RES_FINAL || tokActual.tipoToken ==  RES_FINSI)
-                    break;
+                    tokActual.tipoToken ==  RES_FINAL || tokActual.tipoToken ==  RES_FINSI ||
+                    tokActual.tipoToken == RES_SINO) // <--- Y AGREGAR ESTO
+                        break;
             } else {
                 registrarError(ERR_EOLN);
                 sincronizar();
@@ -211,17 +213,26 @@ int Sintaxis::procDefEntrada()
         sigToken();
         if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
             string nombre = tokActual.token;
-            if (realizarAnalisisSemantico && !semantica.existeIdentificador(nombre))
-                registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+
+            // --- DEBUG START ---
+            if (realizarAnalisisSemantico) {
+                cout << "[DEBUG] Verificando existencia de variable: " << nombre << "... ";
+                if (!semantica.existeIdentificador(nombre)) {
+                    cout << "NO EXISTE. Registrando error." << endl;
+                    registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+                } else {
+                    cout << "SI EXISTE. (Esto esta mal si no la declaraste)" << endl;
+                }
+            }
+            // --- DEBUG END ---
+
             int tipo = semantica.getTipoIdentificador(nombre);
 
             if (generarCodigo) {
-                if (tipo == RES_CADENA) {
-                    generador.emitir("IN_STR", nombre); // Instruccion para cadenas
-                } else {
-                    generador.emitir("IN_NUM", nombre); // Instruccion para numeros (Entero/Flotante)
-                }
+                if (tipo == RES_CADENA) generador.emitir("IN_STR", nombre);
+                else generador.emitir("IN_NUM", nombre);
             }
+
             sigToken();
             if (tokActual.token == ")") sigToken();
             else error = ERR_PARENTESIS_CERRAR;
@@ -229,7 +240,6 @@ int Sintaxis::procDefEntrada()
     } else error = ERR_PARENTESIS_ABRIR;
     return error;
 }
-
 int Sintaxis::procDefIdentificador()
 {
     int error = ERR_NO_SINTAX_ERROR;
@@ -411,17 +421,39 @@ int Sintaxis::procDefSi() {
     if (error == ERR_NO_SINTAX_ERROR && tokActual.tipoToken == LIN_EOLN) {
         sigToken();
 
-        // Generar etiqueta y salto
+        string lblElse = "";
         string lblFin = "";
+
         if (generarCodigo) {
-            lblFin = generador.nuevaEtiqueta();
-            generador.emitir("JMPF", lblFin); // Saltar a Fin si Falso
+            lblElse = generador.nuevaEtiqueta(); // Etiqueta para el SINO
+            generador.emitir("JMPF", lblElse);   // Si falso, ir a SINO
         }
 
+        // Bloque VERDADERO
         procInstrucciones();
 
-        // Poner etiqueta destino
-        if (generarCodigo) generador.emitir("LABEL", lblFin);
+        // Si hay un SINO, necesitamos saltar al final después del bloque verdadero
+        if (tokActual.tipoToken == RES_SINO) {
+            if (generarCodigo) {
+                lblFin = generador.nuevaEtiqueta();
+                generador.emitir("JMP", lblFin);    // Saltar al final absoluto (evitar el else)
+                generador.emitir("LABEL", lblElse); // Aquí empieza el SINO
+            }
+
+            sigToken(); // Consumir 'sino'
+            if (tokActual.tipoToken == LIN_EOLN) sigToken();
+            else error = ERR_EOLN;
+
+            // Bloque FALSO (SINO)
+            if (error == ERR_NO_SINTAX_ERROR) {
+                procInstrucciones();
+                if (generarCodigo) generador.emitir("LABEL", lblFin); // Fin absoluto
+            }
+        }
+        else {
+            // Si NO hubo sino, la etiqueta de falso es el fin
+            if (generarCodigo) generador.emitir("LABEL", lblElse);
+        }
 
         if (tokActual.tipoToken == RES_FINSI) sigToken();
         else error = ERR_FINSI;
@@ -429,8 +461,43 @@ int Sintaxis::procDefSi() {
 
     return error;
 }
+int Sintaxis::procDefMientras() {
+    int error = ERR_NO_SINTAX_ERROR;
 
-int Sintaxis::procDefMientras() { return ERR_NO_SINTAX_ERROR; } // Pendiente
+    string lblInicio = "";
+    string lblFin = "";
+
+    if (generarCodigo) {
+        lblInicio = generador.nuevaEtiqueta();
+        lblFin = generador.nuevaEtiqueta();
+        generador.emitir("LABEL", lblInicio); // Marcamos el inicio para volver
+    }
+
+    // Condición
+    error = procDefCondicion();
+
+    if (error == ERR_NO_SINTAX_ERROR && tokActual.tipoToken == LIN_EOLN) {
+        sigToken();
+
+        if (generarCodigo) {
+            generador.emitir("JMPF", lblFin); // Si la condición es falsa, salir
+        }
+
+        // Cuerpo del ciclo
+        procInstrucciones();
+
+        if (generarCodigo) {
+            generador.emitir("JMP", lblInicio); // Volver a evaluar condición
+            generador.emitir("LABEL", lblFin);  // Salida del ciclo
+        }
+
+        if (tokActual.tipoToken == RES_FINMI) sigToken();
+        else error = ERR_FINMI;
+    }
+    else if (error == ERR_NO_SINTAX_ERROR) error = ERR_EOLN;
+
+    return error;
+}
 int Sintaxis::procDefCiclo() { return ERR_NO_SINTAX_ERROR; } // Pendiente
 
 // =======================

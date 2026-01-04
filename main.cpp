@@ -1,11 +1,3 @@
-/*
-NOTA: para compilar (en Windows) debe estar instalado:
-    - MSYS2 MINGW64
-    - CMAKE
-
-   > mingw32-make
-*/
-
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -15,7 +7,6 @@ NOTA: para compilar (en Windows) debe estar instalado:
 
 using namespace std;
 
-
 int main(int argc, char* argv[])
 {
     vector<char>tCars;
@@ -23,141 +14,98 @@ int main(int argc, char* argv[])
     string errToken;
 
     Lexico lex;
+    char modoEjecucion = 'L';
 
-    char modoEjecucion = 'L';  // L : lexico; S : sintaxis;  M : semantica;  B : byte-code;   R : run-time
-
-
-    if (argc < 2)
-    {
+    if (argc < 2) {
         cout << "Uso: " << argv[0] << " <archivo.txt> <parametro>\n";
-        cout << "   <parametro>:\n";
-        cout << "      -L : (Lexico) para mostrar la lista de tokens\n";
-        cout << "      -S : (Sintaxis) para hacer la revision sintactica\n";
-        cout << "      -M : (seMantica) muestra la lista de identificadores declarados\n";
-        cout << "      -B : (Byte-code) mostrar el byte-code generado\n";
-        cout << "      -R : (Run-time) Ejecuta el codigo compilado\n";
         return 1;
     }
 
     ifstream archivo(argv[1], ios::in);
-    if (!archivo)
-    {
+    if (!archivo) {
         cerr << "No se pudo abrir el archivo: " << argv[1] << "\n";
         return 1;
     }
 
-    if (argc > 1)
-    {
+    if (argc > 1) {
         string arg = argv[2];
-
         if (arg == "-L") modoEjecucion = 'L';
         else if (arg == "-S") modoEjecucion = 'S';
         else if (arg == "-M") modoEjecucion = 'M';
-        else if (arg == "-B") modoEjecucion = 'B'; // Agregado
+        else if (arg == "-B") modoEjecucion = 'B';
         else if (arg == "-R") modoEjecucion = 'R';
         else modoEjecucion = 'S';
     }
 
-
-    //----------------------- leer todos los caracteres del archivo
     char c;
-    while (archivo.get(c))
-        tCars.push_back(c);
+    while (archivo.get(c)) tCars.push_back(c);
     tCars.push_back('\n');
     archivo.close();
-    //-----------------------
 
     switch (modoEjecucion)
     {
         case 'L' :
             error = lex.generaLexico(tCars, errToken, false);
-            if (error == ERR_NOERROR)
-                lex.imprimir();
-            else
-                cout << "ERROR LEXICO: " << error << " :: " << errToken << "\n";
-            cout << "Total de lineas procesadas: " << lex.getLineas() << "\n";
+            if (error == ERR_NOERROR) lex.imprimir();
+            else cout << "ERROR LEXICO: " << error << " :: " << errToken << "\n";
             break;
 
-        case 'S' : // SOLO SINTAXIS
+        case 'S' :
             error = lex.generaLexico(tCars, errToken, false);
-
-            if (error == ERR_NOERROR)
-            {
-                lex.imprimir();
-                cout << "=== INICIANDO ANALISIS SINTACTICO ===" << endl;
-
-                // CORRECCION: 3 argumentos (Lexico, Semantica=OFF, Bytecode=OFF)
+            if (error == ERR_NOERROR) {
                 Sintaxis sintax(lex, false, false);
-
                 sintax.generaSintaxis();
                 sintax.imprimirErrores();
             }
-            else
-                cout << "ERROR LEXICO FATAL: " << error << " :: " << errToken << "\n";
             break;
 
-        case 'M' : // SINTAXIS + SEMANTICA
+        case 'M' :
             error = lex.generaLexico(tCars, errToken, false);
-
-            if (error == ERR_NOERROR)
-            {
-                cout << "=== INICIANDO ANALISIS SEMANTICO ===" << endl;
-
-                // CORRECCION: 3 argumentos (Lexico, Semantica=ON, Bytecode=OFF)
+            if (error == ERR_NOERROR) {
                 Sintaxis sintax(lex, true, false);
-
                 sintax.generaSintaxis();
                 sintax.imprimirErrores();
             }
-            else
-                cout << "ERROR LEXICO FATAL: " << error << " :: " << errToken << "\n";
             break;
 
-        case 'B' : // BYTECODE
+        case 'B' :
             error = lex.generaLexico(tCars, errToken, false);
-            if (error == ERR_NOERROR)
-            {
-                cout << "=== GENERANDO BYTECODE ===" << endl;
-
-                // CORRECCION: 3 argumentos (Lexico, Semantica=ON, Bytecode=ON)
-                // Necesitamos semántica ON para saber los tipos de las variables al generar código
+            if (error == ERR_NOERROR) {
                 Sintaxis sintax(lex, true, true);
-
                 sintax.generaSintaxis();
                 sintax.imprimirErrores();
-
-                // Solo imprimimos el código si no hubo errores graves
-                sintax.imprimirBytecode();
+                sintax.imprimirBytecode(); // Solo si quieres ver el bytecode incluso con errores
             }
-            else
-                cout << "ERROR LEXICO FATAL" << endl;
             break;
 
-        case 'R' :
+        case 'R' : // RUNTIME (AQUÍ ESTABA EL FALLO)
             error = lex.generaLexico(tCars, errToken, false);
             if (error == ERR_NOERROR)
             {
-                // Para ejecutar, necesitamos generar el código primero
-                // Activamos Semántica y Bytecode (true, true)
+                // 1. Compilar (Semantica + Bytecode)
                 Sintaxis sintax(lex, true, true);
-                sintax.generaSintaxis();
 
-                // Si compiló bien...
-                // (Aquí deberías checar si hubo errores sintax.imprimirErrores o un método que retorne bool)
+                // Guardamos el resultado del analisis
+                int resultadoAnalisis = sintax.generaSintaxis();
 
-                // Obtenemos el código y arrancamos la máquina
-                vector<tInstruccion> codigo = sintax.getBytecodeGenerado();
+                // 2. VERIFICACIÓN ESTRICTA
+                // Si el resultado NO es ERR_NO_SINTAX_ERROR (0), significa que hubo errores (101, etc)
+                if (resultadoAnalisis == ERR_NO_SINTAX_ERROR) {
 
-                if (!codigo.empty()) {
+                    // Solo si no hubo errores, obtenemos el código y ejecutamos
+                    vector<tInstruccion> codigo = sintax.getBytecodeGenerado();
                     Runtime vm(codigo);
                     vm.run();
+
                 } else {
-                    cout << "No se pudo ejecutar: Errores de compilacion." << endl;
+                    // Si hubo errores, los imprimimos y ABORTAMOS
+                    sintax.imprimirErrores();
+                    cout << "No se puede ejecutar debido a errores de compilacion." << endl;
                 }
             }
             else
             {
-                cout << "ERROR LEXICO FATAL" << endl;
+                 cout << "ERROR LEXICO FATAL" << endl;
             }
             break;
     }
