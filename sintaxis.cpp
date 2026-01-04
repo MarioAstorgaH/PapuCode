@@ -213,10 +213,15 @@ int Sintaxis::procDefEntrada()
             string nombre = tokActual.token;
             if (realizarAnalisisSemantico && !semantica.existeIdentificador(nombre))
                 registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+            int tipo = semantica.getTipoIdentificador(nombre);
 
-            // GENERACION: Leer teclado y guardar
-            if (generarCodigo) generador.emitir("IN", nombre);
-
+            if (generarCodigo) {
+                if (tipo == RES_CADENA) {
+                    generador.emitir("IN_STR", nombre); // Instruccion para cadenas
+                } else {
+                    generador.emitir("IN_NUM", nombre); // Instruccion para numeros (Entero/Flotante)
+                }
+            }
             sigToken();
             if (tokActual.token == ")") sigToken();
             else error = ERR_PARENTESIS_CERRAR;

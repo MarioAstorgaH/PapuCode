@@ -1,0 +1,16 @@
+entero a
+entero b
+entero resultado
+
+inicio
+    a = 10
+    b = 20
+
+    resultado = (a + b) * 2
+
+    salida(resultado)
+
+    si resultado > 50
+        salida("Es mayor a 50")
+    finsi
+final

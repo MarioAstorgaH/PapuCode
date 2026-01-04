@@ -11,7 +11,7 @@ NOTA: para compilar (en Windows) debe estar instalado:
 #include <vector>
 #include "lexico.h"
 #include "sintaxis.h"
-
+#include "runtime.h"
 
 using namespace std;
 
@@ -134,7 +134,31 @@ int main(int argc, char* argv[])
             break;
 
         case 'R' :
-            cout << "El modo Run-Time aun no esta implementado." << endl;
+            error = lex.generaLexico(tCars, errToken, false);
+            if (error == ERR_NOERROR)
+            {
+                // Para ejecutar, necesitamos generar el código primero
+                // Activamos Semántica y Bytecode (true, true)
+                Sintaxis sintax(lex, true, true);
+                sintax.generaSintaxis();
+
+                // Si compiló bien...
+                // (Aquí deberías checar si hubo errores sintax.imprimirErrores o un método que retorne bool)
+
+                // Obtenemos el código y arrancamos la máquina
+                vector<tInstruccion> codigo = sintax.getBytecodeGenerado();
+
+                if (!codigo.empty()) {
+                    Runtime vm(codigo);
+                    vm.run();
+                } else {
+                    cout << "No se pudo ejecutar: Errores de compilacion." << endl;
+                }
+            }
+            else
+            {
+                cout << "ERROR LEXICO FATAL" << endl;
+            }
             break;
     }
 

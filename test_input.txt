@@ -1,0 +1,27 @@
+cadena nombre
+entero edad
+entero anioNacimiento
+
+inicio
+    salida("--- PROGRAMA DE IDENTIDAD ---")
+
+    salida("Como te llamas?")
+    entrada(nombre)
+
+    salida("Cuantos anios tienes?")
+    entrada(edad)
+
+    anioNacimiento = 2026 - edad
+
+    salida("-----------------------------")
+    salida("Hola", nombre)
+    salida("Naciste aproximadamente en:", anioNacimiento)
+
+    si edad >= 18
+        salida("Eres mayor de edad.")
+    finsi
+
+    si edad < 18
+        salida("Eres menor de edad.")
+    finsi
+final

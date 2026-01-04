@@ -61,6 +61,10 @@ public:
     string mensajeError(int err);
     void imprimirErrores();
     void imprimirBytecode(); // Método puente para llamar a generador.imprimir()
+    // NUEVO MÉTODO
+    vector<tInstruccion> getBytecodeGenerado() {
+        return generador.getCodigo();
+    }
 };
 
 #endif

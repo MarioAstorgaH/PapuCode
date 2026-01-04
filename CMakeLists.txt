@@ -10,4 +10,6 @@ add_executable(PapuCode
         semantica.cpp
         semantica.h
         bytecode.cpp
-        bytecode.h)
+        bytecode.h
+        runtime.cpp
+        runtime.h)
