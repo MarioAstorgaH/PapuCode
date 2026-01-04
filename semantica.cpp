@@ -9,7 +9,6 @@ int Semantica::agregarIdentificador(string nombre, int tipo) {
     if (tablaSimbolos.find(nombre) != tablaSimbolos.end()) {
         return ERR_SEMANTICA_IDENTIFICADOR_YA_EXISTE;
     }
-    cout << "[DEBUG Semantica] Agregando variable: " << nombre << endl;
     tablaSimbolos[nombre] = tipo;
     return ERR_SEMANTICA_NO_ERROR;
 }
@@ -30,7 +29,6 @@ int Semantica::getTipoIdentificador(string nombre) {
 
 bool Semantica::existeIdentificador(string nombre) {
     bool existe = tablaSimbolos.find(nombre) != tablaSimbolos.end();
-    cout << "[DEBUG Semantica] Buscando '" << nombre << "'. Encontrado: " << (existe ? "SI" : "NO") << endl;
     return existe;
 }
 bool Semantica::sonTiposCompatibles(int tipo1, int tipo2) {

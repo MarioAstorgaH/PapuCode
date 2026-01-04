@@ -216,12 +216,8 @@ int Sintaxis::procDefEntrada()
 
             // --- DEBUG START ---
             if (realizarAnalisisSemantico) {
-                cout << "[DEBUG] Verificando existencia de variable: " << nombre << "... ";
                 if (!semantica.existeIdentificador(nombre)) {
-                    cout << "NO EXISTE. Registrando error." << endl;
                     registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
-                } else {
-                    cout << "SI EXISTE. (Esto esta mal si no la declaraste)" << endl;
                 }
             }
             // --- DEBUG END ---
