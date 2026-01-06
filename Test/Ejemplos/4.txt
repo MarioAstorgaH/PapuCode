@@ -1,0 +1,9 @@
+entero numero
+
+inicio
+    numero=1
+    mientras numero<=10
+        salida(numero)
+        numero=numero+1
+    finmi
+final

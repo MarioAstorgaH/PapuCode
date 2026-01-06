@@ -1,6 +1,0 @@
-
-# El clasico "Hola mundo"
-
-inicio 
-salida("hola mundo")
-final

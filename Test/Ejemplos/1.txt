@@ -1,0 +1,6 @@
+#   morphoss@gmail.com    COMP_01_01
+# El clasico "Hola mundo"
+
+InicIo
+saliDa("hola mundo")
+final

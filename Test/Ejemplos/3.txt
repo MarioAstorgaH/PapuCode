@@ -1,0 +1,18 @@
+flotante n1
+flotante n2
+flotante suma
+flotante resta
+flotante multiplicacion
+flotante division
+
+inicio
+    salida("ingresa el primer numero")
+    entrada(n1)
+    salida("ingresa el segundo numero")
+    entrada(n2)
+    suma=n1+n2
+    resta=n1-n2
+    multiplicacion=n1*n2
+    division=n1/n2
+    salida(suma,resta,multiplicacion,division)
+final

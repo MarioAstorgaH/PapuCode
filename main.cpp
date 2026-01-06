@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
             }
             break;
 
-        case 'R' : // RUNTIME (AQUÍ ESTABA EL FALLO)
+        case 'R' :
             error = lex.generaLexico(tCars, errToken, false);
             if (error == ERR_NOERROR)
             {
@@ -91,7 +91,6 @@ int main(int argc, char* argv[])
                 // 2. VERIFICACIÓN ESTRICTA
                 // Si el resultado NO es ERR_NO_SINTAX_ERROR (0), significa que hubo errores (101, etc)
                 if (resultadoAnalisis == ERR_NO_SINTAX_ERROR) {
-
                     // Solo si no hubo errores, obtenemos el código y ejecutamos
                     vector<tInstruccion> codigo = sintax.getBytecodeGenerado();
                     Runtime vm(codigo);

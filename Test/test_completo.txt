@@ -1,23 +1,23 @@
-entero n
+entero numero
 entero i
 entero resultado
 
 inicio
     salida("================================")
-    salida("   PRUEBA DE ERROR SEMANTICO    ")
+    salida("   CALCULADORA DE FACTORIAL     ")
     salida("================================")
 
     salida("Ingresa un numero positivo:")
-
-    # AQUI ESTA EL ERROR: 'numero' no existe, existe 'n'
     entrada(numero)
 
+    # Probamos el SI y el SINO
     si numero < 0
         salida("ERROR: No se puede calcular factorial de negativos.")
     sino
         resultado = 1
         i = 1
 
+        #Probamos el MIENTRAS (Ciclo)
         mientras i <= numero
             resultado = resultado * i
             i = i + 1
