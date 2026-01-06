@@ -1,4 +1,4 @@
-#   morphoss@gmail.com    COMP_01_01
+#   morphoss@gmail.com     asunto=COMP_01_01
 # El clasico "Hola mundo"
 
 InicIo

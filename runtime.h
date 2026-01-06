@@ -1,40 +1,43 @@
 #ifndef RUNTIME_H
 #define RUNTIME_H
 
-#include <iostream>
 #include <vector>
-#include <stack>
-#include <map>
 #include <string>
-#include <variant> // C++17 feature util, o usamos struct clásico
-#include "bytecode.h" // Necesitamos conocer tInstruccion
+#include <iostream>
+#include <map>
+#include <stack> // <--- AGREGAR ESTO
+#include "bytecode.h"
 
 using namespace std;
 
-// Estructura para manejar valores híbridos (Números y Strings) en la pila
+// Estructura para valores (Entero o Cadena)
 struct Valor {
-    int tipo; // 0 = Numero, 1 = Cadena
+    int tipo; // 0=Num, 1=Str
     double valNum;
     string valStr;
 };
 
 class Runtime {
+public:
+    Runtime(vector<tInstruccion> code);
+    void run();
+
 private:
     vector<tInstruccion> codigo;
+    int ip; // Instruction Pointer
+    vector<map<string, Valor>> scopes;
     stack<Valor> pila;
-    map<string, Valor> memoria; // Variables: nombre -> valor
-    map<string, int> etiquetas; // Saltos: nombre_label -> indice_instruccion
-    int ip; // Instruction Pointer (qué linea estamos ejecutando)
 
-    // Métodos auxiliares
+    // --- NUEVO: PILA PARA FUNCIONES ---
+    stack<int> pilaLlamadas;
+    // ----------------------------------
+
+    map<string, int> etiquetas; // Mapa de etiquetas para saltos rápidos
+
     void buscarEtiquetas();
     void pushNum(double v);
     void pushStr(string s);
     Valor pop();
-
-public:
-    Runtime(vector<tInstruccion> code);
-    void run();
 };
 
 #endif

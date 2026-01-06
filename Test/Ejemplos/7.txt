@@ -1,0 +1,13 @@
+def factorial(entero n)
+    si n == 0
+        retornar 1
+    sino
+        retornar n * factorial(n - 1)
+    finsi
+findef
+
+inicio
+    entero resultado
+    resultado = factorial(5)
+    salida("El factorial de 5 es:", resultado)
+final

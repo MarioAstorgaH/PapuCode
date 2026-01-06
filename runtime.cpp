@@ -4,7 +4,8 @@
 Runtime::Runtime(vector<tInstruccion> code) {
     codigo = code;
     ip = 0;
-    buscarEtiquetas(); // Pre-calculamos a dónde saltar
+    scopes.push_back(map<string, Valor>()); // Scope Global (Indice 0)
+    buscarEtiquetas();
 }
 
 // Mapea las etiquetas (L1, L2...) a sus posiciones en el vector de código
@@ -46,6 +47,7 @@ void Runtime::run() {
         string op = codigo[ip].operacion;
         string param = codigo[ip].parametro;
 
+        cout << "[IP:" << ip << "] " << op << " " << param << endl;
         // --- MOVIMIENTO DE DATOS ---
         if (op == "PUSH") {
             if (param.size() > 0 && param[0] == '"') {
@@ -56,17 +58,36 @@ void Runtime::run() {
             }
         }
         else if (op == "LOAD") {
-            if (memoria.find(param) != memoria.end()) {
-                pila.push(memoria[param]);
-            } else {
-                cerr << "Error Runtime: Variable no inicializada '" << param << "'" << endl;
+            // 1. Buscar en Scope Local (tope de la pila)
+            if (scopes.back().count(param)) {
+                pila.push(scopes.back()[param]);
+            }
+            // 2. Si no, buscar en Global (base de la pila)
+            else if (scopes[0].count(param)) {
+                pila.push(scopes[0][param]);
+            }
+            else {
+                cerr << "Error Runtime: Variable '" << param << "' no existe." << endl;
                 exit(1);
             }
         }
         else if (op == "STORE") {
             Valor v = pop();
-            memoria[param] = v;
+
+            // Prioridad: ¿Ya existe en local? -> Actualizar local
+            if (scopes.back().count(param)) {
+                scopes.back()[param] = v;
+            }
+            // ¿Existe en global? -> Actualizar global
+            else if (scopes[0].count(param)) {
+                scopes[0][param] = v;
+            }
+            // ¿No existe? -> Crear en Local (o Global si estamos en el main)
+            else {
+                scopes.back()[param] = v;
+            }
         }
+        // STORE_STR y STORE_NUM siguen la misma lógica o usan STORE genérico
         // --- ENTRADA / SALIDA ---
         else if (op == "OUT") {
             Valor v = pop();
@@ -80,7 +101,16 @@ void Runtime::run() {
             getline(cin, input);
 
             Valor v; v.tipo = 1; v.valStr = input; v.valNum = 0;
-            memoria[param] = v;
+
+            // --- CORRECCIÓN: USAR SCOPES EN LUGAR DE MEMORIA ---
+            if (scopes.back().count(param)) {         // Existe en local?
+                scopes.back()[param] = v;
+            } else if (scopes[0].count(param)) {      // Existe en global?
+                scopes[0][param] = v;
+            } else {                                  // Nuevo -> Local
+                scopes.back()[param] = v;
+            }
+            // ---------------------------------------------------
         }
 
         // LECTURA DE NUMEROS (Estricta: Falla si no es número)
@@ -102,8 +132,17 @@ void Runtime::run() {
                 }
 
                 // Si todo bien, guardamos
+
                 Valor v; v.tipo = 0; v.valNum = d;
-                memoria[param] = v;
+
+                // --- CORRECCIÓN: USAR SCOPES EN LUGAR DE MEMORIA ---
+                if (scopes.back().count(param)) {         // Existe en local?
+                    scopes.back()[param] = v;
+                } else if (scopes[0].count(param)) {      // Existe en global?
+                    scopes[0][param] = v;
+                } else {                                  // Nuevo -> Local
+                    scopes.back()[param] = v;
+                }
 
             } catch (...) {
                 // Si la conversión falla totalmente (ej: "hola"), error fatal
@@ -201,7 +240,35 @@ void Runtime::run() {
         else if (op == "LABEL") {
             // Nada
         }
+        // ===============================================
+        // FUNCIONES (CALL y RET)
+        // ===============================================
+        else if (op == "CALL") {
+            if (etiquetas.count(param)) {
+                pilaLlamadas.push(ip + 1);
+                ip = etiquetas[param];
 
+                // --- NUEVO: CREAR SCOPE VACÍO PARA LA FUNCIÓN ---
+                scopes.push_back(map<string, Valor>());
+
+                continue;
+            } // ... error else ...
+        }
+        else if (op == "RET") {
+            if (pilaLlamadas.empty()) { /* Error */ }
+
+            int retorno = pilaLlamadas.top();
+            pilaLlamadas.pop();
+            ip = retorno;
+
+            // --- NUEVO: BORRAR SCOPE DE LA FUNCIÓN ---
+            // (Solo si no estamos en el scope global, por seguridad)
+            if (scopes.size() > 1) {
+                scopes.pop_back();
+            }
+
+            continue;
+        }
         ip++;
     }
     

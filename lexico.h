@@ -60,6 +60,7 @@ using namespace std;
 #define RES_SALIDA 210
 #define RES_ENTRADA 211
 #define RES_FINCI 212
+#define RES_RETORNAR 213
 
 // --- COLUMNAS DEL AUTÓMATA (COL) ---
 // Estos valores deben coincidir con las columnas de tu matriz en lexico.cpp

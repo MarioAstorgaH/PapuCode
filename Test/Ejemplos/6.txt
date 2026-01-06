@@ -1,0 +1,23 @@
+entero contador
+
+def saludar
+    salida("--- Entrando a la funcion ---")
+    contador = contador + 1
+    salida("Contador actual:", contador)
+    salida("--- Saliendo de la funcion ---")
+findef
+
+inicio
+    salida("Inicio del programa principal")
+    contador = 0
+
+    salida("Llamando a funcion por primera vez:")
+    saludar()
+
+    salida("Haciendo cosas en el main...")
+
+    salida("Llamando a funcion por segunda vez:")
+    saludar()
+
+    salida("Fin del programa principal")
+final

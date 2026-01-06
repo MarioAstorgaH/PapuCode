@@ -207,6 +207,7 @@ int Lexico::tipoIdentificador(string id)
     if (id == "entrada") return RES_ENTRADA;
     if (id == "def") return RES_DEF;
     if (id == "findef") return RES_FINDEF;
+    if (id=="retornar") return RES_RETORNAR;
 
     return -1;
 }

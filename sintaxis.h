@@ -47,6 +47,7 @@ private:
     int procDefCondicion();
     int procDefExpresion(int &tipoResultado);
     int procDefIdentificador();
+    int procDefRetornar();
 
     // Auxiliares
     int agregarIdentificador(string iden, int tipo, int linea);
