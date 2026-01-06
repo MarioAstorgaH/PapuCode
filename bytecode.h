@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-
+#include <fstream>
 using namespace std;
 
 // Estructura de una instrucción de la Máquina de Pila
@@ -20,7 +20,7 @@ private:
 
 public:
     GenBytecode();
-
+    void cerrar();
     // Agrega una instrucción a la lista
     void emitir(string op, string param = "");
 
@@ -32,6 +32,8 @@ public:
 
     // Retorna el vector (útil si luego quieres ejecutarlo)
     vector<tInstruccion> getCodigo();
+private:
+    ofstream archivo;
 };
 
 #endif

@@ -42,12 +42,23 @@ void Sintaxis::registrarError(int codigo) {
     colaErrores.push(errorInfo);
 }
 
-// Método principal público
 int Sintaxis::generaSintaxis() {
     procPrincipal();
+
+    // =======================================================
+    // FIX: FORZAR EL GUARDADO DEL ARCHIVO
+    // =======================================================
+    // Si no hubo errores, cerramos el generador para que
+    // se escriban los datos pendientes (el PUSH que faltaba).
+    if (colaErrores.empty() && generarCodigo) {
+        // Asegúrate de que tu clase Generador tenga un método cerrar() o close()
+        // Si la variable 'generador' es privada, esto debe estar aquí dentro.
+        generador.cerrar();
+    }
+    // =======================================================
+
     return colaErrores.empty() ? ERR_NO_SINTAX_ERROR : colaErrores.front().codigo;
 }
-
 // =========================================================================
 // MÉTODOS DE LA GRAMÁTICA
 // =========================================================================
@@ -148,14 +159,15 @@ int Sintaxis::procInstrucciones()
            tokActual.tipoToken != RES_FINDEF &&
            tokActual.tipoToken != RES_FINMI &&
            tokActual.tipoToken != RES_FINSI &&
-           tokActual.tipoToken != RES_SINO) // <--- AGREGAR ESTO
+           tokActual.tipoToken != RES_SINO &&
+           tokActual.tipoToken != RES_FINCI) // <--- AGREGAR ESTO (Tu ID 212)
     {
         error = ERR_NO_SINTAX_ERROR;
         switch (tokActual.tipoToken)
         {
             case RES_SI : error = procDefSi(); break;
             case RES_MIENTRAS : error = procDefMientras(); break;
-            case RES_CICLO : error = procDefCiclo(); break;
+            case RES_CICLO : error = procDefCiclo(); break; // <--- AGREGAR ESTO (Tu ID 209)
             case RES_SALIDA : error = procDefSalida(); break;
             case RES_ENTRADA : error = procDefEntrada(); break;
             case LIN_IDENTIFICADOR : error = procDefIdentificador(); break;
@@ -169,10 +181,10 @@ int Sintaxis::procInstrucciones()
         } else {
             if (tokActual.tipoToken == LIN_EOLN) {
                 sigToken();
-                // Verificamos si el bloque terminó después del EOLN
                 if (tokActual.tipoToken == RES_FINMI || tokActual.tipoToken == RES_FINDEF ||
-                    tokActual.tipoToken ==  RES_FINAL || tokActual.tipoToken ==  RES_FINSI ||
-                    tokActual.tipoToken == RES_SINO) // <--- Y AGREGAR ESTO
+                    tokActual.tipoToken == RES_FINAL || tokActual.tipoToken == RES_FINSI ||
+                    tokActual.tipoToken == RES_SINO ||
+                    tokActual.tipoToken == RES_FINCI) // <--- AGREGAR AQUI TAMBIEN
                         break;
             } else {
                 registrarError(ERR_EOLN);
@@ -493,8 +505,7 @@ int Sintaxis::procDefMientras() {
     else if (error == ERR_NO_SINTAX_ERROR) error = ERR_EOLN;
 
     return error;
-}
-int Sintaxis::procDefCiclo() { return ERR_NO_SINTAX_ERROR; } // Pendiente
+}// Pendiente
 
 // =======================
 // UTILIDADES
@@ -550,4 +561,166 @@ void Sintaxis::imprimirErrores()
         contador++;
     }
     cout << "---------------------------------------" << endl;
+}
+int Sintaxis::procDefCiclo() {
+    int error = ERR_NO_SINTAX_ERROR;
+
+    // Etiquetas
+    string lblCondicion, lblCuerpo, lblIncremento, lblFin;
+    if (generarCodigo) {
+        lblCondicion = generador.nuevaEtiqueta();
+        lblCuerpo = generador.nuevaEtiqueta();
+        lblIncremento = generador.nuevaEtiqueta();
+        lblFin = generador.nuevaEtiqueta();
+    }
+
+    sigToken(); // Consumir 'ciclo'
+    if (tokActual.token != "(") return ERR_PARENTESIS_ABRIR;
+    sigToken(); // Consumir '('
+
+    // =========================================================
+    // 1. INICIALIZACIÓN (i = 0)
+    // =========================================================
+    if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+        string nombre = tokActual.token;
+        if (realizarAnalisisSemantico && !semantica.existeIdentificador(nombre))
+            registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
+
+        int tipoVar = semantica.getTipoIdentificador(nombre);
+        sigToken();
+
+        if (tokActual.token == "=") {
+            sigToken();
+
+            // --- DEBUG: Ver que estamos leyendo ---
+            cout << "[GEN] Analizando valor inicial. Token: " << tokActual.token
+                 << " Tipo: " << tokActual.tipoToken << endl;
+
+            // BLINDAJE TOTAL: Checar ID de token O isdigit
+            if (tokActual.tipoToken == LIN_NUM_ENTERO || tokActual.tipoToken == LIN_NUM_FLOTANTE || isdigit(tokActual.token[0])) {
+                cout << "[GEN] -> Emitiendo PUSH_NUM " << tokActual.token << endl;
+                if (generarCodigo) generador.emitir("PUSH_NUM"," " + tokActual.token);
+                sigToken();
+            } else if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+                cout << "[GEN] -> Emitiendo LOAD_NUM " << tokActual.token << endl;
+                if (generarCodigo) generador.emitir("LOAD_NUM", tokActual.token);
+                sigToken();
+            } else {
+                cout << "[ERROR FATAL] Inicializacion invalida. Token desconocido: " << tokActual.token << endl;
+                return 1;
+            }
+
+            cout << "[GEN] -> Emitiendo STORE " << nombre << endl;
+            if (generarCodigo) {
+                if (tipoVar == RES_CADENA) generador.emitir("STORE_STR", nombre);
+                else generador.emitir("STORE_NUM", nombre);
+            }
+        } else return 1;
+    }
+
+    if (tokActual.token == ";") sigToken(); else return 110;
+
+    // =========================================================
+    // 2. CONDICIÓN (i < 10)
+    // =========================================================
+    if (generarCodigo) generador.emitir("LABEL", lblCondicion);
+
+    // Op1
+    if (tokActual.tipoToken == LIN_NUM_ENTERO || isdigit(tokActual.token[0])) {
+        if (generarCodigo) generador.emitir("PUSH_NUM", tokActual.token);
+        sigToken();
+    } else {
+        if (generarCodigo) generador.emitir("LOAD_NUM", tokActual.token);
+        sigToken();
+    }
+
+    // Operador
+    string op = tokActual.token;
+    if (op == "<" || op == ">" || op == "<=" || op == ">=" || op == "==" || op == "<>") {
+        sigToken();
+    } else return 112;
+
+    // Op2
+    if (tokActual.tipoToken == LIN_NUM_ENTERO || isdigit(tokActual.token[0])) {
+        if (generarCodigo) generador.emitir("PUSH_NUM", tokActual.token);
+        sigToken();
+    } else {
+        if (generarCodigo) generador.emitir("LOAD_NUM", tokActual.token);
+        sigToken();
+    }
+
+    // Comparacion
+    if (generarCodigo) {
+        if (op == "<") generador.emitir("CMP_LT", "");
+        else if (op == ">") generador.emitir("CMP_GT", "");
+        // ... (otros operadores si quieres) ...
+        else if (op == "<=") generador.emitir("CMP_LE", ""); // Completar si falta
+    }
+
+    if (generarCodigo) generador.emitir("JMPF", lblFin);
+    if (generarCodigo) generador.emitir("JMP", lblCuerpo);
+
+    if (tokActual.token == ";") sigToken(); else return 110;
+
+    // =========================================================
+    // 3. INCREMENTO (i = i + 2)
+    // =========================================================
+    if (generarCodigo) generador.emitir("LABEL", lblIncremento);
+
+    if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+        string nombreDest = tokActual.token;
+        sigToken();
+        if (tokActual.token == "=") {
+            sigToken();
+
+            // Op1
+            if (tokActual.tipoToken == LIN_NUM_ENTERO || isdigit(tokActual.token[0])) {
+                if (generarCodigo) generador.emitir("PUSH_NUM", tokActual.token);
+                sigToken();
+            } else {
+                if (generarCodigo) generador.emitir("LOAD_NUM", tokActual.token);
+                sigToken();
+            }
+
+            // Op (+)
+            string opArit = tokActual.token;
+            if (opArit == "+" || opArit == "-") sigToken();
+
+            // Op2
+            if (tokActual.tipoToken == LIN_NUM_ENTERO || isdigit(tokActual.token[0])) {
+                if (generarCodigo) generador.emitir("PUSH_NUM", tokActual.token);
+                sigToken();
+            } else {
+                if (generarCodigo) generador.emitir("LOAD_NUM", tokActual.token);
+                sigToken();
+            }
+
+            if (generarCodigo) {
+                if (opArit == "+") generador.emitir("ADD", "");
+                else generador.emitir("SUB", "");
+                generador.emitir("STORE_NUM", nombreDest);
+            }
+        }
+    }
+
+    if (generarCodigo) generador.emitir("JMP", lblCondicion);
+
+    // =========================================================
+    // 4. CIERRE
+    // =========================================================
+    while (tokActual.token != ")" && tokActual.tipoToken != LIN_EOF) sigToken();
+    if (tokActual.token == ")") sigToken();
+    else return ERR_PARENTESIS_CERRAR;
+
+    if (generarCodigo) generador.emitir("LABEL", lblCuerpo);
+    while (tokActual.tipoToken == LIN_EOLN) sigToken();
+    procInstrucciones();
+
+    if (generarCodigo) generador.emitir("JMP", lblIncremento);
+    if (generarCodigo) generador.emitir("LABEL", lblFin);
+
+    if (tokActual.tipoToken == RES_FINCI) sigToken();
+    else return 111;
+
+    return ERR_NO_SINTAX_ERROR;
 }

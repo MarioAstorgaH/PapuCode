@@ -167,7 +167,7 @@ int Lexico::tipoCaracter(char c)
     if (isalpha(c)) return COL_LETRAS;
     if (isdigit(c)) return COL_NUMEROS;
     if (c == '.') return COL_PUNTO;
-    if (c == '(' || c == ')' || c == ',' || c == '*' || c == '/') return COL_UNITARIOS;
+    if (c == '(' || c == ')' || c == ',' || c == '*' || c == '/' || c==';') return COL_UNITARIOS;
     if (c == '=') return COL_IGUAL;
     if (c == '>') return COL_MAYOR;
     if (c == '<') return COL_MENOR;

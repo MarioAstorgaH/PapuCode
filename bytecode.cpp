@@ -1,4 +1,5 @@
 #include "bytecode.h"
+#include <fstream>
 
 GenBytecode::GenBytecode() {
     contadorEtiquetas = 0;
@@ -41,4 +42,8 @@ void GenBytecode::imprimir() {
 
 vector<tInstruccion> GenBytecode::getCodigo() {
     return codigoGenerado;
+}
+// Agrega esto al final del archivo
+void GenBytecode::cerrar() {
+    archivo.close();
 }

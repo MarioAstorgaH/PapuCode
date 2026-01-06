@@ -1,0 +1,13 @@
+entero i
+
+inicio
+    salida("=== TEST CICLO FOR ===")
+
+    # ciclo ( inicializacion ; condicion ; incremento )
+    # Vamos a contar pares del 0 al 8
+    ciclo ( i = 0 ; i < 10 ; i = i + 2 )
+        salida("Contador:", i)
+    finci
+
+    salida("=== FIN DEL CICLO ===")
+final

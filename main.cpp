@@ -9,6 +9,7 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
+    cout << "--- ESTOY EJECUTANDO LA VERSION NUEVA V3.0 ---" << endl;
     vector<char>tCars;
     int error;
     string errToken;
