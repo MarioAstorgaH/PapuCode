@@ -1,13 +1,19 @@
-def factorial(entero n)
-    si n == 0
-        retornar 1
+def fibonacci(entero n)
+    si n <= 1
+        retornar n
     sino
-        retornar n * factorial(n - 1)
+        retornar fibonacci(n - 1) + fibonacci(n - 2)
     finsi
 findef
 
 inicio
+    entero n
     entero resultado
-    resultado = factorial(5)
-    salida("El factorial de 5 es:", resultado)
+
+    n = 10
+    salida("Calculando Fibonacci de:", n)
+
+    resultado = fibonacci(n)
+
+    salida("El resultado es:", resultado)
 final

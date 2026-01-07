@@ -47,7 +47,7 @@ void Runtime::run() {
         string op = codigo[ip].operacion;
         string param = codigo[ip].parametro;
 
-        cout << "[IP:" << ip << "] " << op << " " << param << endl;
+       // cout << "[IP:" << ip << "] " << op << " " << param << endl;
         // --- MOVIMIENTO DE DATOS ---
         if (op == "PUSH") {
             if (param.size() > 0 && param[0] == '"') {
@@ -86,6 +86,11 @@ void Runtime::run() {
             else {
                 scopes.back()[param] = v;
             }
+        }
+        // NUEVA INSTRUCCIÓN: Fuerza el guardado en el scope local
+        else if (op == "STORE_LOCAL") {
+            Valor v = pop();
+            scopes.back()[param] = v;
         }
         // STORE_STR y STORE_NUM siguen la misma lógica o usan STORE genérico
         // --- ENTRADA / SALIDA ---

@@ -46,6 +46,8 @@ private:
     int procDefEntrada();
     int procDefCondicion();
     int procDefExpresion(int &tipoResultado);
+    int procDefTermino(int &tipoResultado);
+    int procDefFactor(int &tipoResultado);
     int procDefIdentificador();
     int procDefRetornar();
 
