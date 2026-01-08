@@ -1,0 +1,30 @@
+entero gN
+entero gI
+
+# Funcion recursiva con parametros y retorno
+def fibonacci(entero n)
+    # Caso Base: F(0)=0, F(1)=1
+    si n <= 1
+        retornar n
+    finsi
+
+    # Paso Recursivo: F(n-1) + F(n-2)
+    retornar fibonacci(n - 1) + fibonacci(n - 2)
+findef
+
+inicio
+    salida("=== FIBONACCI RECURSIVO (PAPUCODE) ===")
+    salida("Cuantos terminos deseas calcular:")
+    entrada(gN)
+
+    salida("--- Generando Serie ---")
+
+    gI = 0
+    mientras gI < gN
+        # Llamamos a la funcion pasando el contador como argumento
+        salida(fibonacci(gI))
+        gI = gI + 1
+    finmi
+
+    salida("--- Fin de la Serie ---")
+final

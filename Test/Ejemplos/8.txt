@@ -1,0 +1,30 @@
+# Declaramos las variables globales
+entero gNumero
+entero gSuma
+entero gSeguir
+
+inicio
+    salida("=== ACUMULADOR DE NUMEROS ===")
+    gSuma = 0
+    gSeguir = 1
+    gNumero = 0
+
+    # Ciclo que se repite mientras gSeguir sea igual a 1
+    mientras gSeguir == 1
+        salida("-----------------------------")
+        salida("Ingrese un numero para sumar:")
+        entrada(gNumero)
+
+        gSuma = gSuma + gNumero
+
+        # Mostramos el parcial (opcional, pero util)
+        salida("-> Suma actual:", gSuma)
+
+        salida("¿Desea ingresar otro numero? (1=Si, 0=No):")
+        entrada(gSeguir)
+    finmi
+
+    salida("=============================")
+    salida("RESULTADO FINAL DE LA SUMA:", gSuma)
+    salida("Programa terminado.")
+final

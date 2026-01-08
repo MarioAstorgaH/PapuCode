@@ -1,0 +1,23 @@
+def factorial(entero n)
+    # Caso base
+    si n <= 1
+        retornar 1
+    finsi
+
+    # Llamada recursiva con parametro y retorno
+    retornar n * factorial(n - 1)
+findef
+
+inicio
+    entero numero
+    entero resultado
+
+    salida("--- CALCULADORA FACTORIAL ---")
+    salida("Introduce un numero:")
+    entrada(numero)
+
+    # Llamada con argumento
+    resultado = factorial(numero)
+
+    salida("El factorial es:", resultado)
+final

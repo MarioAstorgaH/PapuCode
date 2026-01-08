@@ -57,146 +57,159 @@ int Sintaxis::procPrincipal() {
     int tipoIdent;
     string ident;
 
-    // 1. SALTO AL MAIN
+    // Preparamos la etiqueta, pero NO emitimos el JMP todavía
     string lblMain = "";
     if (generarCodigo) {
         lblMain = generador.nuevaEtiqueta();
-        generador.emitir("JMP", lblMain);
     }
 
     sigToken(); // Leer primer token
 
-    while (tokActual.tipoToken != RES_INICIO && tokActual.tipoToken != LIN_EOF) {
-        error = ERR_NO_SINTAX_ERROR;
-
-        // VARIABLES GLOBALES
-        if (tokActual.tipoToken == RES_ENTERO || tokActual.tipoToken == RES_FLOTANTE || tokActual.tipoToken == RES_CADENA) {
-            tipoIdent = tokActual.tipoToken;
+    // =========================================================================
+    // FASE 1: VARIABLES GLOBALES
+    // (Se ejecutan secuencialmente al iniciar el programa)
+    // =========================================================================
+    while (tokActual.tipoToken == RES_ENTERO ||
+           tokActual.tipoToken == RES_FLOTANTE ||
+           tokActual.tipoToken == RES_CADENA ||
+           tokActual.tipoToken == LIN_EOLN)
+    {
+        if (tokActual.tipoToken == LIN_EOLN) {
             sigToken();
-            if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
-                ident = tokActual.token;
+            continue;
+        }
+
+        // Proceso de Declaración Global
+        tipoIdent = tokActual.tipoToken;
+        sigToken();
+        if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+            ident = tokActual.token;
+            sigToken();
+            if (tokActual.tipoToken == LIN_EOLN) {
+                // Registrar en Tabla de Símbolos
+                if (realizarAnalisisSemantico) agregarIdentificador(ident, tipoIdent, 0);
+                else agregarIdentificador(ident, tipoIdent, 0);
+
+                // Generar código de inicialización (STORE)
+                if (generarCodigo) {
+                    // Empujamos valor default y guardamos en memoria GLOBAL
+                    if (tipoIdent == RES_CADENA) generador.emitir("PUSH", "");
+                    else generador.emitir("PUSH", "0");
+
+                    // 🔥 Aquí usamos STORE_LOCAL porque estamos en scope 0 (Global)
+                    // y queremos que la VM reserve el espacio ahora mismo.
+                    generador.emitir("STORE_LOCAL", ident);
+                }
+
                 sigToken();
-                if (tokActual.tipoToken == LIN_EOLN) {
-                    // REGISTRO STANDARD
-                    if (realizarAnalisisSemantico) {
-                         agregarIdentificador(ident, tipoIdent, 0);
-                    } else {
-                         agregarIdentificador(ident, tipoIdent, 0);
-                    }
-                    sigToken();
-                } else error = ERR_EOLN;
-            } else error = ERR_IDENTIFICADOR;
-        }
-        // FUNCIONES
-        else if (tokActual.tipoToken == RES_DEF) {
-            tipoIdent = RES_FUNCION;
-            sigToken(); // Consumir 'def'
+            } else { error = ERR_EOLN; break; }
+        } else { error = ERR_IDENTIFICADOR; break; }
+    }
 
-            if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
-                ident = tokActual.token;
+    if (error != ERR_NO_SINTAX_ERROR) {
+        registrarError(error);
+        return error;
+    }
 
-                // 🔥🔥🔥 1. REGISTRAR LA FUNCIÓN (¡CRUCIAL!) 🔥🔥🔥
-                if (realizarAnalisisSemantico) {
-                    // Si ya existe, lanzamos error, si no, la agregamos
-                    int err = agregarIdentificador(ident, tipoIdent, 0);
-                    if (err != 0) registrarError(err);
-                } else {
-                    agregarIdentificador(ident, tipoIdent, 0);
-                }
-                // ----------------------------------------------------
+    // =========================================================================
+    // FASE 2: EL SALTO MÁGICO (JMP)
+    // (Ahora que ya declaramos las variables, saltamos sobre las funciones)
+    // =========================================================================
+    if (generarCodigo) {
+        generador.emitir("JMP", lblMain);
+    }
 
-                sigToken(); // Consumir nombre función
-
-                // 2. LABEL
-                if (generarCodigo) generador.emitir("LABEL", ident);
-
-                // 3. PARÁMETROS
-                vector<string> parametrosInvertidos;
-
-                if (tokActual.token == "(") {
-                    sigToken(); // Consumir '('
-
-                    if (tokActual.token != ")") {
-                        while (true) {
-                            int tipoParam = 0;
-                            // Leer Tipo
-                            if (tokActual.tipoToken == RES_ENTERO || tokActual.tipoToken == RES_FLOTANTE || tokActual.tipoToken == RES_CADENA) {
-                                tipoParam = tokActual.tipoToken;
-                                sigToken();
-
-                                // Leer Nombre Variable
-                                if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
-                                    parametrosInvertidos.push_back(tokActual.token);
-
-                                    // 🔥🔥🔥 2. REGISTRAR PARÁMETRO 'n' 🔥🔥🔥
-                                    if (realizarAnalisisSemantico) {
-                                        // Forzamos el agregado aunque "ya exista" en otro scope (simplificado)
-                                        semantica.agregarIdentificador(tokActual.token, tipoParam);
-                                    }
-                                    // --------------------------------------------
-
-                                    sigToken();
-                                } else {
-                                    error = ERR_IDENTIFICADOR;
-                                    break;
-                                }
-                            } else {
-                                if (tokActual.token != ")" && tokActual.token != ",") {
-                                     error = ERR_INSTRUCCION_DESCONOCIDA;
-                                     break;
-                                }
-                            }
-
-                            if (tokActual.token == ",") sigToken();
-                            else if (tokActual.token == ")") break;
-                            else {
-                                error = ERR_PARENTESIS_CERRAR;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (error == ERR_NO_SINTAX_ERROR && tokActual.token == ")") {
-                        sigToken();
-                    }
-                }
-
-                // 4. GENERAR STORE (Guardar argumentos en variables locales)
-                if (generarCodigo && error == ERR_NO_SINTAX_ERROR) {
-                    for (int i = parametrosInvertidos.size() - 1; i >= 0; i--) {
-                        generador.emitir("STORE_LOCAL", parametrosInvertidos[i]);
-                    }
-                }
-
-                // 5. CUERPO DE LA FUNCIÓN
-                if (tokActual.tipoToken == LIN_EOLN) {
-                    sigToken();
-                    procInstrucciones();
-
-                    if (tokActual.tipoToken == RES_FINDEF) {
-                        if (generarCodigo) generador.emitir("RET");
-                        sigToken();
-                        if (tokActual.tipoToken == LIN_EOLN) sigToken();
-                        else error = ERR_EOLN;
-                    } else error = ERR_FINDEF;
-                } else error = ERR_EOLN;
-
-            } else error = ERR_IDENTIFICADOR;
-        }
-        else if (tokActual.tipoToken == LIN_EOLN) {
+    // =========================================================================
+    // FASE 3: FUNCIONES
+    // (Código muerto que solo se ejecuta al ser llamado)
+    // =========================================================================
+    while (tokActual.tipoToken == RES_DEF || tokActual.tipoToken == LIN_EOLN)
+    {
+        if (tokActual.tipoToken == LIN_EOLN) {
             sigToken();
+            continue;
         }
-        else {
-            error = ERR_INICIO;
-        }
+
+        // ... [AQUÍ VA TU LÓGICA DE FUNCIONES EXACTAMENTE IGUAL] ...
+        tipoIdent = RES_FUNCION;
+        sigToken(); // Consumir 'def'
+
+        if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+            ident = tokActual.token;
+
+            // 1. REGISTRAR FUNCIÓN
+            if (realizarAnalisisSemantico) {
+                int err = agregarIdentificador(ident, tipoIdent, 0);
+                if (err != 0) registrarError(err);
+            } else {
+                agregarIdentificador(ident, tipoIdent, 0);
+            }
+
+            sigToken(); // Consumir nombre
+
+            // 2. LABEL
+            if (generarCodigo) generador.emitir("LABEL", ident);
+
+            // 3. PARÁMETROS
+            vector<string> parametrosInvertidos;
+
+            if (tokActual.token == "(") {
+                sigToken();
+                if (tokActual.token != ")") {
+                    while (true) {
+                        int tipoParam = 0;
+                        if (tokActual.tipoToken == RES_ENTERO || tokActual.tipoToken == RES_FLOTANTE || tokActual.tipoToken == RES_CADENA) {
+                            tipoParam = tokActual.tipoToken;
+                            sigToken();
+                            if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+                                parametrosInvertidos.push_back(tokActual.token);
+                                if (realizarAnalisisSemantico) semantica.agregarIdentificador(tokActual.token, tipoParam);
+                                sigToken();
+                            } else { error = ERR_IDENTIFICADOR; break; }
+                        } else {
+                           if (tokActual.token != ")" && tokActual.token != ",") { error = ERR_INSTRUCCION_DESCONOCIDA; break; }
+                        }
+                        if (tokActual.token == ",") sigToken();
+                        else if (tokActual.token == ")") break;
+                        else { error = ERR_PARENTESIS_CERRAR; break; }
+                    }
+                }
+                if (error == ERR_NO_SINTAX_ERROR && tokActual.token == ")") sigToken();
+            }
+
+            // 4. GUARDAR PARÁMETROS
+            if (generarCodigo && error == ERR_NO_SINTAX_ERROR) {
+                for (int i = parametrosInvertidos.size() - 1; i >= 0; i--) {
+                    generador.emitir("STORE_LOCAL", parametrosInvertidos[i]);
+                }
+            }
+
+            // 5. CUERPO
+            if (tokActual.tipoToken == LIN_EOLN) {
+                sigToken();
+                procInstrucciones();
+                if (tokActual.tipoToken == RES_FINDEF) {
+                    if (generarCodigo) generador.emitir("RET");
+                    sigToken();
+                    if (tokActual.tipoToken == LIN_EOLN) sigToken();
+                    else error = ERR_EOLN;
+                } else error = ERR_FINDEF;
+            } else error = ERR_EOLN;
+
+        } else error = ERR_IDENTIFICADOR;
+        // ... [FIN LOGICA FUNCIONES] ...
 
         if (error != ERR_NO_SINTAX_ERROR) {
             registrarError(error);
-            sincronizar();
+            sincronizar(); // Importante para recuperarse
+            // break; // Opcional: Break si quieres detenerte al primer error de función
         }
     }
 
-    // BLOQUE PRINCIPAL
+    // =========================================================================
+    // FASE 4: BLOQUE PRINCIPAL (INICIO)
+    // (Aquí aterriza el JMP de la Fase 2)
+    // =========================================================================
     if (tokActual.tipoToken == RES_INICIO) {
         if (generarCodigo) generador.emitir("LABEL", lblMain);
 
@@ -213,7 +226,11 @@ int Sintaxis::procPrincipal() {
         if (tokActual.tipoToken != RES_FINAL) {
             registrarError(ERR_FINAL);
         }
+    } else {
+        // Si llegamos aquí y no es INICIO (y no es EOF), es un error de estructura
+        if (tokActual.tipoToken != LIN_EOF) error = ERR_INICIO;
     }
+
     return colaErrores.empty() ? 0 : colaErrores.front().codigo;
 }
 int Sintaxis::procInstrucciones()
@@ -225,7 +242,8 @@ int Sintaxis::procInstrucciones()
            tokActual.tipoToken != RES_FINDEF &&
            tokActual.tipoToken != RES_FINMI &&
            tokActual.tipoToken != RES_FINSI &&
-           tokActual.tipoToken != RES_SINO) // <--- AGREGAR ESTO
+           tokActual.tipoToken != RES_SINO &&
+           tokActual.tipoToken != RES_FINCI)
     {
         error = ERR_NO_SINTAX_ERROR;
         switch (tokActual.tipoToken)
@@ -279,7 +297,7 @@ int Sintaxis::procInstrucciones()
                 // Verificamos si el bloque terminó después del EOLN
                 if (tokActual.tipoToken == RES_FINMI || tokActual.tipoToken == RES_FINDEF ||
                     tokActual.tipoToken ==  RES_FINAL || tokActual.tipoToken ==  RES_FINSI ||
-                    tokActual.tipoToken == RES_SINO) // <--- Y AGREGAR ESTO
+                    tokActual.tipoToken == RES_SINO || tokActual.tipoToken == RES_FINCI)
                         break;
             } else {
                 // AQUI ESTA LA MAGIA: IMPRIMIR EL CULPABLE
@@ -568,7 +586,114 @@ int Sintaxis::procDefMientras() {
 
     return error;
 }
-int Sintaxis::procDefCiclo() { return ERR_NO_SINTAX_ERROR; } // Pendiente
+int Sintaxis::procDefCiclo() {
+    int error = ERR_NO_SINTAX_ERROR;
+    sigToken(); // Consumir 'ciclo'
+
+    if (tokActual.token == "(") {
+        sigToken(); // Consumir '('
+
+        // 1. INICIALIZACIÓN
+        if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+            string id = tokActual.token;
+            int tipoId = semantica.getTipoIdentificador(id);
+            if (realizarAnalisisSemantico && tipoId == RES_NO_DECL) return ERR_SEMANTICA_IDENTIFICADOR_NO_DECL;
+
+            sigToken();
+            if (tokActual.token == "=") {
+                sigToken();
+                int tipoExpr = 0;
+                error = procDefExpresion(tipoExpr);
+                if (error != ERR_NO_SINTAX_ERROR) return error;
+                if (generarCodigo) generador.emitir("STORE_LOCAL", id);
+            } else return ERR_INSTRUCCION_DESCONOCIDA;
+        } else return ERR_IDENTIFICADOR;
+
+        // 🔥🔥🔥 CORRECCIÓN CRÍTICA AQUÍ 🔥🔥🔥
+        // Verificamos que sea punto y coma, PERO NO LO CONSUMIMOS (sigToken).
+        // ¿Por qué? Porque 'procDefCondicion' hace un sigToken() al inicio
+        // y necesitamos que consuma este ';' en lugar de comerse la variable 'i'.
+        if (tokActual.token == ";") {
+             // NO HACER sigToken(); <--- EL SECRETO ESTÁ EN BORRAR ESTO
+        }
+        else return ERR_INSTRUCCION_DESCONOCIDA;
+        // -------------------------------------------------------------------
+
+        // 2. ETIQUETAS
+        string lblCond = "", lblInc = "", lblCuerpo = "", lblFin = "";
+        if (generarCodigo) {
+            lblCond = generador.nuevaEtiqueta();
+            lblInc = generador.nuevaEtiqueta();
+            lblCuerpo = generador.nuevaEtiqueta();
+            lblFin = generador.nuevaEtiqueta();
+            generador.emitir("LABEL", lblCond);
+        }
+
+        // 3. CONDICIÓN
+        error = procDefCondicion(); // Este consumirá el primer ';'
+        if (error != ERR_NO_SINTAX_ERROR) return error;
+
+        if (generarCodigo) {
+            generador.emitir("JMPF", lblFin);
+            generador.emitir("JMP", lblCuerpo);
+            generador.emitir("LABEL", lblInc);
+        }
+
+        // El segundo punto y coma SÍ lo consumimos nosotros
+        if (tokActual.token == ";") sigToken();
+        else return ERR_INSTRUCCION_DESCONOCIDA;
+
+        // 4. INCREMENTO
+        if (tokActual.tipoToken == LIN_IDENTIFICADOR) {
+            string id = tokActual.token;
+            sigToken();
+
+            if (tokActual.token == "++") {
+                if (generarCodigo) {
+                    generador.emitir("LOAD", id);
+                    generador.emitir("PUSH", "1");
+                    generador.emitir("ADD");
+                    generador.emitir("STORE_LOCAL", id);
+                }
+                sigToken();
+            }
+            else if (tokActual.token == "--") {
+                if (generarCodigo) {
+                    generador.emitir("LOAD", id);
+                    generador.emitir("PUSH", "1");
+                    generador.emitir("SUB");
+                    generador.emitir("STORE_LOCAL", id);
+                }
+                sigToken();
+            }
+        } else return ERR_IDENTIFICADOR;
+
+        if (tokActual.token == ")") sigToken();
+        else return ERR_PARENTESIS_CERRAR;
+
+        if (generarCodigo) {
+            generador.emitir("JMP", lblCond);
+            generador.emitir("LABEL", lblCuerpo);
+        }
+
+        if (tokActual.tipoToken == LIN_EOLN) sigToken();
+        else return ERR_EOLN;
+
+        // 5. CUERPO
+        procInstrucciones();
+
+        if (generarCodigo) {
+            generador.emitir("JMP", lblInc);
+            generador.emitir("LABEL", lblFin);
+        }
+
+        if (tokActual.tipoToken == RES_FINCI) sigToken();
+        else error = ERR_INSTRUCCION_DESCONOCIDA;
+
+    } else error = ERR_PARENTESIS_ABRIR;
+
+    return error;
+}
 
 // =======================
 // UTILIDADES
@@ -771,8 +896,7 @@ int Sintaxis::procDefFactor(int &tipoResultado)
                 registrarError(ERR_SEMANTICA_IDENTIFICADOR_NO_DECL);
             }
             if (generarCodigo) {
-                if (tipoIdent == RES_CADENA) generador.emitir("LOAD_STR", nombre);
-                else generador.emitir("LOAD", nombre);
+                generador.emitir("LOAD", nombre);
             }
             tipoResultado = tipoIdent;
             sigToken();

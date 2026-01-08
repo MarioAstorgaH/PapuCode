@@ -1,0 +1,42 @@
+# Declaramos las variables globales
+flotante gCotizacion
+flotante gPesos
+flotante gDolares
+entero gSeguir
+
+# Funcion que captura pesos y convierte
+def funcionConvertir()
+    salida("Ingrese la cantidad en Pesos MXN:")
+    entrada(gPesos)
+
+    # Operacion aritmetica con globales
+    gDolares = gPesos / gCotizacion
+
+    salida("-> Resultado en Dolares:", gDolares)
+findef
+
+inicio
+    salida("=== CASA DE CAMBIO PAPUCODE ===")
+
+    # 1. Capturamos la cotizacion (Una sola vez al inicio)
+    salida("Ingrese el precio del Dolar hoy:")
+    entrada(gCotizacion)
+
+    # Inicializamos la bandera del ciclo
+    gSeguir = 1
+
+    # 2. Ciclo hasta que el usuario quiera salir
+    mientras gSeguir == 1
+        salida("-----------------------------")
+
+        # Llamamos a la funcion
+        funcionConvertir()
+
+        # Preguntamos si quiere repetir
+        salida("-----------------------------")
+        salida("¿Desea realizar otra conversion? (1=Si, 0=No):")
+        entrada(gSeguir)
+    finmi
+
+    salida("Gracias por usar el sistema.")
+final

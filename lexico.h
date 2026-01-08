@@ -61,7 +61,6 @@ using namespace std;
 #define RES_ENTRADA 211
 #define RES_FINCI 212
 #define RES_RETORNAR 213
-
 // --- COLUMNAS DEL AUTÓMATA (COL) ---
 // Estos valores deben coincidir con las columnas de tu matriz en lexico.cpp
 #define COL_LETRAS 0
@@ -102,6 +101,7 @@ using namespace std;
 #define LIN_HASH 77
 #define LIN_ESPACIO 78
 #define LIN_PUNTO 79
+#define LIN_PUNTO_COMA 80
 
 struct tToken {
     int tipoToken;

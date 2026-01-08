@@ -1,19 +1,37 @@
-def fibonacci(entero n)
-    si n <= 1
-        retornar n
-    sino
-        retornar fibonacci(n - 1) + fibonacci(n - 2)
-    finsi
+entero gClave
+cadena gNombre
+entero i
+
+def capturarDatos()
+    salida("Ingrese la Clave:")
+    entrada(gClave)
+
+    salida("Ingrese el Nombre:")
+    entrada(gNombre)
+findef
+
+def imprimirDatos()
+    salida("-> Datos guardados: ", gClave, gNombre)
 findef
 
 inicio
-    entero n
-    entero resultado
+    salida("--- SISTEMA DE REGISTRO (3 PERSONAS) ---")
 
-    n = 10
-    salida("Calculando Fibonacci de:", n)
+    # Inicializamos el contador manualmente
+    i = 1
 
-    resultado = fibonacci(n)
+    # Usamos MIENTRAS en lugar de CICLO
+    mientras i <= 5
+        salida("-----------------------------")
+        salida("Registro Numero:", i)
 
-    salida("El resultado es:", resultado)
+        capturarDatos()
+        imprimirDatos()
+
+        # Incrementamos manualmente
+        i = i + 1
+    finmi
+
+    salida("-----------------------------")
+    salida("Proceso terminado.")
 final

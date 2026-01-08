@@ -50,26 +50,50 @@ void Runtime::run() {
        // cout << "[IP:" << ip << "] " << op << " " << param << endl;
         // --- MOVIMIENTO DE DATOS ---
         if (op == "PUSH") {
-            if (param.size() > 0 && param[0] == '"') {
+            // 1. ¿Es una cadena explícita? (Tiene comillas)
+            if (param.size() >= 2 && param[0] == '"') {
                 string limpio = param.substr(1, param.size() - 2);
                 pushStr(limpio);
-            } else {
-                pushNum(stod(param));
+            }
+            // 2. Si no, intentamos interpretarlo como número
+            else {
+                try {
+                    // Intentamos convertir
+                    double d = stod(param);
+                    pushNum(d);
+                }
+                catch (...) {
+                    // 🔥 SALVAVIDAS: Si stod falla (ej: es vacío o texto sin comillas),
+                    // lo guardamos como cadena en vez de crashear.
+                    pushStr(param);
+                }
             }
         }
         else if (op == "LOAD") {
-            // 1. Buscar en Scope Local (tope de la pila)
+            //cout << "--- [DEBUG LOAD] Buscando: " << param << " ---" << endl;
+            bool encontrada = false;
+
+            // 1. Intentar Local
             if (scopes.back().count(param)) {
-                pila.push(scopes.back()[param]);
+                Valor v = scopes.back()[param];
+               // cout << "   -> Encontrada en LOCAL. Valor: " << (v.tipo == 1 ? v.valStr : to_string(v.valNum)) << endl;
+                pila.push(v);
+                encontrada = true;
             }
-            // 2. Si no, buscar en Global (base de la pila)
+            // 2. Intentar Global
             else if (scopes[0].count(param)) {
-                pila.push(scopes[0][param]);
+                Valor v = scopes[0][param];
+              //  cout << "   -> Encontrada en GLOBAL. Valor: " << (v.tipo == 1 ? v.valStr : to_string(v.valNum)) << endl;
+                pila.push(v);
+                encontrada = true;
             }
-            else {
-                cerr << "Error Runtime: Variable '" << param << "' no existe." << endl;
+
+            if (!encontrada) {
+                cout << "   -> ERROR: No encontrada." << endl;
+                cout << "Error Runtime: Variable '" << param << "' no existe." << endl;
                 exit(1);
             }
+            //cout << "   -> PUSH OK. Tamano Pila: " << pila.size() << endl;
         }
         else if (op == "STORE") {
             Valor v = pop();

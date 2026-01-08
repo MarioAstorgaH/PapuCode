@@ -90,6 +90,26 @@ int Lexico::generaLexico(vector<char> entrada, string &errorToken, bool imprimir
     for (int i = 0; i < entrada.size(); )
     {
         car = entrada[i];
+        if (estado == 0) {
+            // 1. PUNTO Y COMA
+            if (car == ';') {
+                tToken t; t.token = ";"; t.tipoToken = LIN_PUNTO_COMA; t.linea = noLineas;
+                lstTokens.push_back(t);
+                i++; continue;
+            }
+            // 2. INCREMENTO (++)
+            if (car == '+' && i + 1 < entrada.size() && entrada[i+1] == '+') {
+                tToken t; t.token = "++"; t.tipoToken = LIN_SIMBOLO; t.linea = noLineas;
+                lstTokens.push_back(t);
+                i += 2; continue; // Avanzamos 2 posiciones
+            }
+            // 3. DECREMENTO (--)
+            if (car == '-' && i + 1 < entrada.size() && entrada[i+1] == '-') {
+                tToken t; t.token = "--"; t.tipoToken = LIN_SIMBOLO; t.linea = noLineas;
+                lstTokens.push_back(t);
+                i += 2; continue; // Avanzamos 2 posiciones
+            }
+        }
         columna = tipoCaracter(car);
         int transicion = matran[estado][columna];
 
@@ -180,6 +200,7 @@ int Lexico::tipoCaracter(char c)
     if (c == '}') return COL_LLAVE_CERRAR;
     if (c == 0 || c == EOF) return COL_EOF;
     if (isspace(c)) return COL_ESPACIO;
+
     return COL_OTROS;
 }
 
